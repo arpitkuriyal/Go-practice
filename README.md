@@ -12,22 +12,35 @@ This repository is a hands-on Go revision workspace. It contains short programs,
 | Concurrency | Concurrency and map-concurrency internals |
 | Interfaces | An interval-focused interface exercise |
 | HTTP | Basics, methods, headers, status codes, routing, middleware, and encoding/decoding |
-| Challenges | Sum, reverse string, employee data management, and word frequency |
+| Challenges | Nine progressively harder problems covering Go basics, data handling, interfaces, concurrency, strings, and HTTP |
 
 ## Repository layout
 
 ```text
 .
-├── 001-challenge/              # Sum exercise
-├── 002-challenge/              # Reverse-string exercise and notes
-├── 003-challenge/              # Employee data-management exercise
-├── 004-challenge/              # Word-frequency exercise
-├── concurrency-internals/      # Concurrency concepts
-├── maps-concurrency-internals/ # Maps used with concurrency
-├── map-internals/              # Map concepts
-├── slice-internals/            # Slice concepts
-├── interfaces-intervals/       # Interfaces exercise
-└── http-notes/                 # HTTP notes and examples
+├── challenges/
+│   ├── 01-sum/                 # Basic arithmetic exercise
+│   ├── 02-reverse-string/      # Strings and rune exercise
+│   ├── 03-employee-management/ # Structs and slice manipulation
+│   ├── 04-word-frequency/      # Maps and text processing
+│   ├── 05-bank-account/        # Errors and concurrent state
+│   ├── 06-shape-calculator/    # Interfaces and polymorphism
+│   ├── 07-slice-operations/    # Generic slice helpers
+│   ├── 08-string-pattern-matching/ # Substring and anagram matching
+│   └── 09-http-auth-middleware/    # HTTP middleware and context
+├── concepts/
+│   ├── 01-slices/
+│   ├── 02-maps/
+│   ├── 03-concurrency/
+│   ├── 04-concurrent-maps/
+│   └── 05-interfaces/
+└── http/
+    ├── 01-basics/
+    ├── 02-methods/
+    ├── 03-requests-and-responses/
+    ├── 04-server-and-routing/
+    ├── 05-middleware/
+    └── 06-json-encoding/
 ```
 
 ## Running an example
@@ -35,13 +48,13 @@ This repository is a hands-on Go revision workspace. It contains short programs,
 Run an individual Go file from the repository root:
 
 ```bash
-go run ./004-challenge/word-frequency.go
+go run ./challenges/04-word-frequency/word-frequency.go
 ```
 
 For a directory containing one runnable package, you can also use:
 
 ```bash
-go run ./interfaces-intervals
+go run ./concepts/05-interfaces
 ```
 
 Format files before committing changes:
@@ -78,6 +91,24 @@ Use this checklist to guide your revision. Aim to explain each item aloud, then 
    go test -race ./...
    ```
 
+## Featured practice challenges
+
+Use this list as a question bank. First read only the **challenge** column and solve it yourself. If you get stuck, open the linked **solution** in this repository and compare your approach after you finish.
+
+| # | Challenge | What to build | Solution |
+| --- | --- | --- | --- |
+| 01 | Sum numbers | Write fixed-arity and variadic functions that return the sum of integer inputs. | [Open solution](challenges/01-sum/sum.go) |
+| 02 | Reverse a string | Reverse a string without modifying it in place; then consider how Unicode changes the solution. | [Open solution](challenges/02-reverse-string/reverse.go) |
+| 03 | Employee management | Create an employee manager that adds, removes, finds employees by ID, and calculates average salary. | [Open solution](challenges/03-employee-management/data-management.go) |
+| 04 | Word frequency | Normalize a sentence and return a map of each word to its number of occurrences. | [Open solution](challenges/04-word-frequency/word-frequency.go) |
+| 05 | Bank account | Implement validated deposits, withdrawals, balance reads, useful errors, and safe concurrent updates. | [Open solution](challenges/05-bank-account/account.go) |
+| 06 | Shape calculator | Define a `Shape` interface for circles, rectangles, and triangles; calculate total area. | [Open solution](challenges/06-shape-calculator/shapes.go) |
+| 07 | Slice operations | Implement generic insert, remove, filter, and deduplication helpers without mutating the input. | [Open solution](challenges/07-slice-operations/slices.go) |
+| 08 | String pattern matching | Find overlapping substring matches, then implement Unicode-safe anagram matching with a sliding window. | [Open solution](challenges/08-string-pattern-matching/patterns.go) |
+| 09 | HTTP authentication middleware | Validate a Bearer token, return JSON errors, and attach the authenticated user to request context. | [Open solution](challenges/09-http-auth-middleware/middleware.go) |
+
+The new challenges include unit tests; use them only after making your own attempt. Run all tests with `go test ./...`. For challenges 05 and 09, also run `go test -race ./...`.
+
 ## Useful interview prompts
 
 - Why does `append` sometimes change the original slice and sometimes not?
@@ -86,16 +117,3 @@ Use this checklist to guide your revision. Aim to explain each item aloud, then 
 - How does interface satisfaction work in Go?
 - How would you avoid goroutine leaks in an HTTP request?
 - How do you distinguish an expected error from an exceptional failure?
-
-## Next additions
-
-Add these in roughly this order:
-
-1. **Testing practice** — table-driven tests, subtests, mocks/fakes, benchmarks, fuzz tests, and `go test -race`.
-2. **Errors and context** — custom errors, wrapping, cancellation, deadlines, and avoiding goroutine leaks.
-3. **Concurrency challenges** — worker pool, rate limiter, fan-out/fan-in, and a thread-safe cache.
-4. **A REST API** — CRUD endpoints with JSON, validation, middleware, authentication, graceful shutdown, and tests.
-5. **Database work** — `database/sql`, transactions, connection pooling, migrations, and SQL injection prevention.
-6. **A CLI tool** — flags, configuration, file I/O, structured logging, and clear error messages.
-
-For every new exercise, include a short problem statement, edge cases, tests, and a note explaining the time/space complexity or design trade-offs.
