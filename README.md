@@ -40,7 +40,8 @@ This repository is a hands-on Go revision workspace. It contains short programs,
     ├── 03-requests-and-responses/
     ├── 04-server-and-routing/
     ├── 05-middleware/
-    └── 06-json-encoding/
+    ├── 06-json-encoding/
+    └── 07-production-checklist/ # Production HTTP patterns and tested API
 ```
 
 ## Running an example
