@@ -120,10 +120,12 @@ Expected Output:
 false
 panic
 */
-type User struct{}
+type User struct {
+	name string
+}
 
 func (u *User) Name() string {
-	return "Arpit"
+	return u.name
 }
 
 func q8() {

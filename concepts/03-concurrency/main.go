@@ -50,10 +50,11 @@ func q3() {
 
 /*
 ========================================
-Q4: Loop Variable Capture Trap
+Q4: Loop Variables in Modern Go
 ========================================
+Go 1.22+ creates a fresh loop variable for each iteration declared with :=.
 Expected Output:
-3 3 3 (order may vary)
+0 1 2 (order may vary)
 */
 func q4() {
 	for i := 0; i < 3; i++ {
@@ -66,7 +67,7 @@ func q4() {
 
 /*
 ========================================
-Q5: Fix Loop Capture
+Q5: Explicit Value Passing (Clear in Any Go Version)
 ========================================
 Expected Output:
 0 1 2 (any order)
