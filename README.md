@@ -6,13 +6,13 @@ This repository is a hands-on Go revision workspace. It contains short programs,
 
 | Area | What you will find |
 | --- | --- |
-| Strings | String immutability, bytes, runes, and common operations |
-| Slices | Slice internals and behaviour |
-| Maps | Map internals and map-related examples |
-| Concurrency | Concurrency and map-concurrency internals |
-| Interfaces | An interval-focused interface exercise |
-| HTTP | Basics, methods, headers, status codes, routing, middleware, and encoding/decoding |
-| Challenges | Nine progressively harder problems covering Go basics, data handling, interfaces, concurrency, strings, and HTTP |
+| Core Go | Strings, bytes and runes, slices, maps, structs, methods, interfaces, and generics |
+| Errors and context | Custom and wrapped errors, `errors.Is`, `errors.As`, cancellation, deadlines, and goroutine-leak prevention |
+| Concurrency | Goroutines, channels, `select`, mutexes, `WaitGroup`, concurrent maps, worker pools, semaphores, rate limiting, caches, `sync.Once`, and `errgroup` |
+| Testing and tooling | Table-driven tests, subtests, fakes, benchmarks, fuzzing, race detection, `go vet`, modules, and formatting |
+| HTTP and APIs | Request/response lifecycle, methods, headers, status codes, routing, middleware, JSON APIs, safe request handling, timeouts, and graceful shutdown |
+| Databases and SQL | `database/sql`, parameterized queries, connection pools, migrations, transactions, locking, indexes, PostgreSQL features, and repository testing |
+| Challenges | Nine progressively harder problems covering Go basics, data handling, interfaces, concurrency, strings, error handling, and HTTP middleware |
 
 ## Repository layout
 
