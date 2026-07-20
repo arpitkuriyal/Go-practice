@@ -33,7 +33,17 @@ This repository is a hands-on Go revision workspace. It contains short programs,
 │   ├── 02-maps/
 │   ├── 03-concurrency/
 │   ├── 04-concurrent-maps/
-│   └── 05-interfaces/
+│   ├── 05-interfaces/
+│   ├── 06-errors-and-context/
+│   ├── 07-testing-and-tooling/
+│   └── 08-concurrency-patterns/
+├── database/
+│   ├── 01-sql-basics/          # SQL, parameterized queries, and pooling
+│   ├── 02-migrations/          # Versioned schema changes and constraints
+│   ├── 03-transactions-and-locking/
+│   ├── 04-query-performance/
+│   ├── 05-postgresql-features/
+│   └── 06-repository-testing/
 └── http/
     ├── 01-basics/
     ├── 02-methods/
