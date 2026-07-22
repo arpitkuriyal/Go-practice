@@ -6,19 +6,18 @@ A built-in map is not safe for concurrent access when at least one goroutine wri
 
 
 
-## CONCURRENT MAP REVISION
+## Quick Revision
 
-
-• Regular maps are NOT safe for concurrent access.
-• Concurrent writes cause a runtime panic.
-• Concurrent read + write also causes races.
-• Use sync.Mutex to protect shared maps.
-• Use sync.RWMutex when reads are much more frequent than writes.
-• Reads also need locking when writes happen concurrently.
-• sync.Map is optimized for read-heavy concurrent workloads.
-• WaitGroup waits for goroutines; it does NOT provide synchronization.
-• Mutex protects shared data; WaitGroup waits for completion.
-• Run `go test -race` to detect data races.
+- Regular maps are NOT safe for concurrent access. 
+- Concurrent writes cause a runtime panic. 
+- Concurrent read + write also causes races. 
+- Use sync.Mutex to protect shared maps. 
+- Use sync.RWMutex when reads are much more frequent than writes.
+- Reads also need locking when writes happen concurrently.
+- sync.Map is optimized for read-heavy concurrent workloads.
+- WaitGroup waits for goroutines; it does NOT provide synchronization.
+- Mutex protects shared data; WaitGroup waits for completion.
+- Run `go test -race` to detect data races.
 
 
 ## Default solution: `map` + `sync.RWMutex`
