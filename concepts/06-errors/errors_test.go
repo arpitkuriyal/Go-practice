@@ -1,10 +1,8 @@
-package errorscontext
+package errors
 
 import (
-	"context"
 	"errors"
 	"testing"
-	"time"
 )
 
 func TestErrorInspection(t *testing.T) {
@@ -22,20 +20,11 @@ func TestErrorInspection(t *testing.T) {
 	}
 }
 
-func TestStreamStopsOnCancellation(t *testing.T) {
-	ctx, cancel := context.WithCancel(context.Background())
-	stream := Stream(ctx, []int{1, 2, 3})
-	if value := <-stream; value != 1 {
-		t.Fatalf("first value = %d, want 1", value)
+func TestValidInput(t *testing.T) {
+	if err := Register("arpit@example.com"); err != nil {
+		t.Fatalf("Register() error = %v, want nil", err)
 	}
-	cancel()
-
-	select {
-	case _, open := <-stream:
-		if open {
-			t.Fatal("stream remained open after cancellation")
-		}
-	case <-time.After(time.Second):
-		t.Fatal("stream did not stop after cancellation")
+	if err := ValidateAge(18); err != nil {
+		t.Fatalf("ValidateAge() error = %v, want nil", err)
 	}
 }

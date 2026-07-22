@@ -43,5 +43,5 @@ go get golang.org/x/sync/errgroup
 Run the examples with race detection:
 
 ```bash
-go test -race ./concepts/08-concurrency-patterns
+go test -race ./concepts/09-concurrency-patterns
 ```

@@ -34,5 +34,5 @@ go mod tidy                           # add needed and remove unused module requ
 Run this module:
 
 ```bash
-go test -bench . ./concepts/07-testing-and-tooling
+go test -bench . ./concepts/08-testing-and-tooling
 ```
