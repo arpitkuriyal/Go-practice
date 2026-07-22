@@ -8,6 +8,11 @@ Q1: Nil Map Assignment
 ========================================
 Expected:
 panic
+
+Reason:
+A nil map can be read from but cannot be written to.
+Writing to a nil map causes:
+panic: assignment to entry in nil map
 */
 func q1() {
 	var m map[string]int
@@ -20,6 +25,11 @@ Q2: Nil Map Read
 ========================================
 Expected Output:
 0
+
+Reason:
+Reading from a nil map is safe.
+If the key doesn't exist, Go returns the zero value
+of the map's value type.
 */
 func q2() {
 	var m map[string]int
@@ -32,6 +42,10 @@ Q3: Map Initialization
 ========================================
 Expected Output:
 map[a:1]
+
+Reason:
+make(map[K]V) allocates and initializes the map.
+After initialization, keys can be added safely.
 */
 func q3() {
 	m := make(map[string]int)
@@ -45,6 +59,11 @@ Q4: Map Passed to Function
 ========================================
 Expected Output:
 map[a:100]
+
+Reason:
+A map variable contains a small header pointing to an
+underlying hash table. The header is copied when passed
+to a function, but both copies share the same map data.
 */
 func modify(m map[string]int) {
 	m["a"] = 100
@@ -62,6 +81,11 @@ Q5: Map Reassignment Trap
 ========================================
 Expected Output:
 map[a:1]
+
+Reason:
+The map header is passed by value. Reassigning it with
+make(map[string]int) only changes the local copy.
+The caller still points to the original map.
 */
 func reassign(m map[string]int) {
 	m = make(map[string]int)
@@ -80,6 +104,11 @@ Q6: Key Existence Check
 ========================================
 Expected Output:
 0 false
+
+Reason:
+Map lookups return two values:
+value -> stored value (or zero value)
+ok    -> true if the key exists.
 */
 func q6() {
 	m := map[string]int{}
@@ -94,6 +123,10 @@ Q7: Iteration Order
 ========================================
 Expected:
 random order
+
+Reason:
+Go does not guarantee map iteration order.
+The order is intentionally randomized.
 */
 func q7() {
 	m := map[string]int{"a": 1, "b": 2, "c": 3}
@@ -109,6 +142,10 @@ Q8: Delete Key
 ========================================
 Expected Output:
 map[]
+
+Reason:
+delete(m, key) removes the key if it exists.
+Calling delete on a missing key is safe.
 */
 func q8() {
 	m := map[string]int{"a": 1}
@@ -122,6 +159,10 @@ Q9: Map of Slices Trap
 ========================================
 Expected:
 panic
+
+Reason:
+m["a"] returns a nil slice because the key doesn't exist.
+Accessing index 0 of a nil slice causes a panic.
 */
 func q9() {
 	m := make(map[string][]int)
@@ -134,6 +175,10 @@ Q10: Fix Map of Slices
 ========================================
 Expected Output:
 map[a:[1]]
+
+Reason:
+append works with nil slices.
+It creates a new slice and stores it back in the map.
 */
 func q10() {
 	m := make(map[string][]int)

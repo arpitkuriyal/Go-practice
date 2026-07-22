@@ -1,5 +1,20 @@
 # Maps: Revision
 
+## Quick Revision
+
+- **Nil map:** Read ✓ | Write ✗ (panic)
+- **Initialize:** `make(map[K]V)` or `map[K]V{}`
+- **Maps share** the same underlying hash table.
+- **Passing a map** copies only the map header.
+- **Modifying entries** affects the caller.
+- **Reassigning the map** inside a function doesn't affect the caller.
+- **delete()** is always safe, even if the key doesn't exist.
+- **Key existence:** `value, ok := m[key]`
+- **Iteration order** is intentionally random.
+- **Maps are not safe** for concurrent reads and writes without synchronization.
+
+---
+
 ## Essential rules
 
 | Operation | Behaviour |
