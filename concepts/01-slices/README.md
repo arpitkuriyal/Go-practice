@@ -25,6 +25,29 @@ Copying a slice copies the header, not its elements. Two slices can therefore ch
 | Copy safely | `clone := append([]T(nil), original...)` or `slices.Clone(original)`. |
 | Delete | `s = append(s[:i], s[i+1:]...)`; clear removed reference slots when memory retention matters. |
 
+
+## Things to Remember
+
+1. Variables are passed by value.
+
+2. Passing a pointer lets you modify the original value.
+
+3. A slice is just:
+   - pointer
+   - length
+   - capacity
+
+4. Copying a slice copies only the slice header.
+
+5. Multiple slices can share one backing array.
+
+6. append may:
+   - reuse the existing backing array
+   - allocate a new one
+
+7. Always capture the return value of append.
+
+
 ## Interview traps
 
 - `append` can overwrite values visible through another slice when spare capacity exists.
