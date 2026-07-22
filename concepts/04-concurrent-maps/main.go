@@ -11,6 +11,11 @@ Q1: Concurrent Map Write (CRASH)
 ========================================
 Expected:
 fatal error: concurrent map writes
+
+Reason:
+A regular map is not safe for concurrent writes.
+Multiple goroutines writing at the same time
+cause a runtime panic.
 */
 func q1() {
 	m := make(map[int]int)
@@ -28,6 +33,11 @@ Q2: Concurrent Read + Write (CRASH)
 ========================================
 Expected:
 fatal error OR race
+
+Reason:
+Reading and writing a regular map concurrently
+is unsafe. Protect the map with synchronization
+or use sync.Map.
 */
 func q2() {
 	m := make(map[int]int)
@@ -43,8 +53,12 @@ func q2() {
 ========================================
 Q3: Fix with Mutex
 ========================================
-Expected:
-safe execution
+Expected Output:
+100
+
+Reason:
+A Mutex allows only one goroutine to access
+the map at a time, making concurrent writes safe.
 */
 func q3() {
 	m := make(map[int]int)
@@ -53,8 +67,10 @@ func q3() {
 
 	for i := 0; i < 100; i++ {
 		wg.Add(1)
+
 		go func(i int) {
 			defer wg.Done()
+
 			mu.Lock()
 			m[i] = i
 			mu.Unlock()
@@ -69,8 +85,13 @@ func q3() {
 ========================================
 Q4: Read Lock Optimization (RWMutex)
 ========================================
-Expected:
-safe + faster reads
+Expected Output:
+1
+
+Reason:
+RWMutex allows multiple readers at the same time,
+but only one writer. Use RLock() for reads and
+Lock() for writes.
 */
 func q4() {
 	m := make(map[int]int)
@@ -87,10 +108,15 @@ func q4() {
 
 /*
 ========================================
-Q5: Lock Missing (Subtle Race)
+Q5: Missing Read Lock
 ========================================
 Expected:
 race condition
+
+Reason:
+Locking only writes is not enough.
+Reads must also be protected when writes
+can happen concurrently.
 */
 func q5() {
 	m := make(map[int]int)
@@ -102,7 +128,7 @@ func q5() {
 		mu.Unlock()
 	}()
 
-	// ❌ read without lock
+	// ❌ Read without lock
 	fmt.Println(m[1])
 }
 
@@ -110,8 +136,12 @@ func q5() {
 ========================================
 Q6: sync.Map Basic Usage
 ========================================
-Expected:
+Expected Output:
 1 true
+
+Reason:
+sync.Map is safe for concurrent access.
+Store() adds a value and Load() retrieves it.
 */
 func q6() {
 	var m sync.Map
@@ -128,6 +158,10 @@ Q7: sync.Map Range
 ========================================
 Expected:
 prints key-value
+
+Reason:
+Range() iterates over every key-value pair
+stored inside a sync.Map.
 */
 func q7() {
 	var m sync.Map
@@ -143,44 +177,66 @@ func q7() {
 
 /*
 ========================================
-Q8: sync.Map vs map Trap
+Q8: sync.Map vs map
 ========================================
 Expected:
 discussion
+
+Reason:
+Use map + Mutex for most applications.
+Use sync.Map mainly for read-heavy workloads
+or independent concurrent keys.
 */
 func q8() {
 	// When to use sync.Map?
-	// high read-heavy workloads
+	// High read-heavy workloads.
 }
 
 /*
 ========================================
-Q9: Double Check Locking Pattern
+Q9: sync.Once (Run Only Once)
 ========================================
-Expected:
-safe lazy init
+Expected Output:
+Initializing...
+Done
+
+Reason:
+sync.Once guarantees a function executes only once,
+even if multiple goroutines call it simultaneously.
+Useful for lazy initialization.
 */
 func q9() {
-	m := make(map[string]int)
-	var mu sync.Mutex
+	var once sync.Once
+	var wg sync.WaitGroup
 
-	key := "a"
-
-	mu.Lock()
-	if _, ok := m[key]; !ok {
-		m[key] = 1
+	init := func() {
+		fmt.Println("Initializing...")
 	}
-	mu.Unlock()
 
-	fmt.Println(m[key])
+	for i := 0; i < 5; i++ {
+		wg.Add(1)
+
+		go func() {
+			defer wg.Done()
+			once.Do(init)
+		}()
+	}
+
+	wg.Wait()
+	fmt.Println("Done")
 }
 
 /*
 ========================================
-Q10: Goroutine + Map + WaitGroup (REAL)
+Q10: WaitGroup + Mutex (Real Example)
 ========================================
-Expected:
-100 elements
+Expected Output:
+100
+
+Reason:
+WaitGroup waits for all goroutines to finish,
+while Mutex protects the shared map from
+concurrent writes.
 */
 func q10() {
 	m := make(map[int]int)
@@ -189,8 +245,10 @@ func q10() {
 
 	for i := 0; i < 100; i++ {
 		wg.Add(1)
+
 		go func(i int) {
 			defer wg.Done()
+
 			mu.Lock()
 			m[i] = i
 			mu.Unlock()
