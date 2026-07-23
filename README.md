@@ -7,7 +7,8 @@ This repository is a hands-on Go revision workspace. It contains short programs,
 | Area | What you will find |
 | --- | --- |
 | Core Go | Strings, bytes and runes, slices, maps, structs, methods, interfaces, and generics |
-| Errors and context | Custom and wrapped errors, `errors.Is`, `errors.As`, cancellation, deadlines, and goroutine-leak prevention |
+| Errors | Detailed examples for sentinel errors, wrapping, `errors.Is`, `errors.As`, and typed errors |
+| Context | Detailed examples for cancellation, deadlines, context-aware channels, and goroutine-leak prevention |
 | Concurrency | Goroutines, channels, `select`, mutexes, `WaitGroup`, concurrent maps, worker pools, semaphores, rate limiting, caches, `sync.Once`, and `errgroup` |
 | Testing and tooling | Table-driven tests, subtests, fakes, benchmarks, fuzzing, race detection, `go vet`, modules, and formatting |
 | HTTP and APIs | Request/response lifecycle, methods, headers, status codes, routing, middleware, JSON APIs, safe request handling, timeouts, and graceful shutdown |
@@ -34,9 +35,10 @@ This repository is a hands-on Go revision workspace. It contains short programs,
 │   ├── 03-concurrency/
 │   ├── 04-concurrent-maps/
 │   ├── 05-interfaces/
-│   ├── 06-errors-and-context/
-│   ├── 07-testing-and-tooling/
-│   └── 08-concurrency-patterns/
+│   ├── 06-errors/
+│   ├── 07-context/
+│   ├── 08-testing-and-tooling/
+│   └── 09-concurrency-patterns/
 ├── database/
 │   ├── 01-sql-basics/          # SQL, parameterized queries, and pooling
 │   ├── 02-migrations/          # Versioned schema changes and constraints
