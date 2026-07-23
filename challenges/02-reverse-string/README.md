@@ -1,938 +1,109 @@
-# Go Strings🚀
+# Reverse a String
 
+## Challenge
 
----
+Read a string and return it in reverse order.
 
-# 1. What is a String?
-
-A string is a **read-only sequence of bytes**.
-
-```go
-s := "hello"
-```
-
-Internally
-
-```
-+---+---+---+---+---+
-| h | e | l | l | o |
-+---+---+---+---+---+
- 104 101 108 108 111
-```
-
-Each element is a **byte (uint8)**.
-
----
-
-# 2. Why are Strings Immutable?
-
-You **cannot change** a character inside a string.
-
-❌
-
-```go
-s := "hello"
-
-s[0] = 'H'
-```
-
-Compiler error
-
-```
-cannot assign to s[0]
-```
-
----
-
-## Why?
-
-A string is stored as
-
-```
-String
-
-↓
-
-Pointer → bytes
-Length
-```
-
-```
-        Pointer
-           │
-           ▼
-
-+---+---+---+---+---+
-| h | e | l | l | o |
-+---+---+---+---+---+
-```
-
-The bytes are **read-only**.
-
-This gives Go:
-
-- Faster copying
-- Memory sharing
-- Safety
-- Better performance
-
----
-
-## Think Like This
-
-```
-Array
-
-Editable
-
-[1 2 3]
- ↑
-
-Can modify
-
-
-String
-
-Read Only
-
-"hello"
-
-Cannot modify
-```
-
----
-
-# 3. Then How Do We Modify a String?
-
-Convert it.
-
-## Option 1 — []byte
-
-```go
-s := "hello"
-
-b := []byte(s)
-
-b[0] = 'H'
-
-s = string(b)
-
-fmt.Println(s)
-```
-
-Output
-
-```
-Hello
-```
-
----
-
-## Option 2 — []rune (Unicode Safe)
-
-```go
-s := "नमस्ते"
-
-r := []rune(s)
-
-r[0] = 'क'
-
-fmt.Println(string(r))
-```
-
----
-
-# 4. String Length
-
-```go
-s := "hello"
-
-fmt.Println(len(s))
-```
-
-Output
-
-```
-5
-```
-
----
-
-## Important
-
-`len()` returns **bytes**, not characters.
-
-Example
-
-```go
-s := "😊"
-
-fmt.Println(len(s))
-```
-
-Output
-
-```
-4
-```
-
-Although you see
-
-```
-😊
-```
-
-it occupies **4 bytes** in UTF-8.
-
----
-
-# 5. Indexing
-
-```go
-s := "hello"
-
-fmt.Println(s[0])
-```
-
-Output
-
-```
-104
-```
-
-Why?
-
-Because
-
-```
-'h'
-
-↓
-
-ASCII
-
-104
-```
-
-Type
-
-```go
-byte
-```
-
----
-
-## Convert to Character
-
-```go
-fmt.Printf("%c\n", s[0])
-```
-
-Output
-
-```
-h
-```
-
----
-
-# 6. What Does s[i] Return?
-
-Always
-
-```
-byte
-```
-
-NOT
-
-```
-string
-```
-
-Example
-
-```go
-s := "Go"
-
-fmt.Println(s[1])
-```
-
-Output
-
-```
-111
-```
-
-Type
-
-```go
-byte
-```
-
----
-
-# 7. Iterate Over String
-
-## Method 1
-
-```go
-for i := 0; i < len(s); i++ {
-    fmt.Println(s[i])
-}
-```
-
-Output
-
-```
-104
-101
-108
-108
-111
-```
-
-Works byte-by-byte.
-
----
-
-## Method 2 (Most Common)
-
-```go
-for i, ch := range s {
-    fmt.Println(i, ch)
-}
-```
-
-Output
-
-```
-0 104
-1 101
-2 108
-3 108
-4 111
-```
-
-For ASCII it looks similar.
-
----
-
-# 8. Unicode Example
-
-```go
-s := "नमस्ते"
-```
-
-Using
-
-```go
-for i := 0; i < len(s); i++ {
-    fmt.Println(s[i])
-}
-```
-
-You'll get
-
-```
-224
-164
-168
-...
-```
-
-because UTF-8 characters use multiple bytes.
-
----
-
-Using
-
-```go
-for i, ch := range s {
-    fmt.Printf("%d %c\n", i, ch)
-}
-```
-
-Output
-
-```
-0 न
-3 म
-6 स
-9 ्
-12 त
-15 े
-```
-
-Notice
-
-```
-0
-3
-6
-9
-```
-
-because each rune uses multiple bytes.
-
----
-
-# 9. byte vs rune
-
-## byte
-
-```
-uint8
-
-1 byte
-```
-
-Example
-
-```
-'A'
-
-↓
-
-65
-```
-
----
-
-## rune
-
-```
-int32
-
-Unicode code point
-```
-
-Example
-
-```
-'😊'
-```
-
-needs a rune.
-
----
-
-Rule
-
-```
-ASCII
-
-↓
-
-byte
-
-
-Unicode
-
-↓
-
-rune
+```text
+input:  Go
+output: oG
 ```
 
----
+The included solution uses a two-pointer swap. It is a good ASCII/byte-based solution. For user-facing text, reverse runes instead so UTF-8 characters are not corrupted.
 
-# 10. Convert String
+## Core idea: two pointers
 
-String → Bytes
+1. Convert the immutable string to a mutable slice.
+2. Start one pointer at the beginning and one at the end.
+3. Swap the values and move both pointers inward.
+4. Convert the slice back to a string.
 
 ```go
 b := []byte(s)
+for left, right := 0, len(b)-1; left < right; left, right = left+1, right-1 {
+	b[left], b[right] = b[right], b[left]
+}
+return string(b)
 ```
 
----
+## Why convert first?
 
-Bytes → String
+Strings are immutable in Go. You can read `s[0]`, but cannot assign to it:
 
 ```go
-s := string(b)
+s := "hello"
+// s[0] = 'H' // compile error
 ```
 
----
+Converting to `[]byte` or `[]rune` creates a mutable sequence that can be swapped.
 
-String → Rune
+## `byte` versus `rune`
+
+| Type | Meaning | Use it when |
+| --- | --- | --- |
+| `byte` | An 8-bit value; a UTF-8 byte | Working with ASCII, bytes, or protocol data. |
+| `rune` | An `int32` Unicode code point | Working with human-readable Unicode text. |
+
+`len(s)` and `s[i]` operate on bytes, not visible characters:
 
 ```go
-r := []rune(s)
+fmt.Println(len("Go")) // 2
+fmt.Println(len("😊")) // 4: UTF-8 bytes
 ```
 
----
+For ASCII, a byte and a character line up. For Unicode text, they often do not.
 
-Rune → String
+## Unicode-safe version
+
+The byte version reverses the individual UTF-8 bytes of `"नमस्ते"` or `"😊"`, producing invalid or incorrect text. Convert to runes for code-point-safe reversal:
 
 ```go
-s := string(r)
-```
-
----
-
-# 11. String Concatenation
-
-```go
-a := "Hello"
-
-b := "World"
-
-fmt.Println(a + " " + b)
-```
-
-Output
-
-```
-Hello World
-```
-
----
-
-# 12. Compare Strings
-
-```go
-fmt.Println("abc"=="abc")
-```
-
-Output
-
-```
-true
-```
-
----
-
-Lexicographical
-
-```go
-fmt.Println("abc" < "abd")
-```
-
-Output
-
-```
-true
-```
-
----
-
-# 13. Strings Package
-
-```go
-import "strings"
-```
-
----
-
-Contains
-
-```go
-strings.Contains()
-
-strings.HasPrefix()
-
-strings.HasSuffix()
-
-strings.Split()
-
-strings.Join()
-
-strings.ReplaceAll()
-
-strings.TrimSpace()
-
-strings.Trim()
-
-strings.ToUpper()
-
-strings.ToLower()
-
-strings.Index()
-
-strings.LastIndex()
-
-strings.Repeat()
-
-strings.Fields()
-
-strings.Count()
-```
-
----
-
-Examples
-
-```go
-strings.Contains("golang","go")
-```
-
-true
-
----
-
-```go
-strings.Split("a,b,c",",")
-```
-
-↓
-
-```
-["a","b","c"]
-```
-
----
-
-```go
-strings.Join(arr,",")
-```
-
-↓
-
-```
-a,b,c
-```
-
----
-
-```go
-strings.ReplaceAll("go go","go","Go")
-```
-
-↓
-
-```
-Go Go
-```
-
----
-
-# 14. Building Large Strings
-
-Bad
-
-```go
-s := ""
-
-for i:=0;i<1000;i++{
-    s += "Go"
+func reverseUnicode(s string) string {
+	r := []rune(s)
+	for left, right := 0, len(r)-1; left < right; left, right = left+1, right-1 {
+		r[left], r[right] = r[right], r[left]
+	}
+	return string(r)
 }
 ```
 
-Every `+` creates a **new string**, making this inefficient.
-
----
-
-Good
+`range` also decodes a string into runes:
 
 ```go
-var b strings.Builder
-
-b.WriteString("Go")
-b.WriteString("Lang")
-
-fmt.Println(b.String())
-```
-
-Use `strings.Builder` for repeated concatenation.
-
----
-
-# 15. Reverse String
-
-ASCII
-
-```go
-b := []byte(s)
-
-for l,r:=0,len(b)-1;l<r;l,r=l+1,r-1{
-    b[l],b[r]=b[r],b[l]
+for byteIndex, r := range "Go😊" {
+	fmt.Println(byteIndex, r)
 }
-
-fmt.Println(string(b))
 ```
 
----
+The index from `range` is a **byte index**, while `r` is a rune.
 
-Unicode Safe
+## Important Unicode caveat
 
-```go
-r := []rune(s)
+Runes are Unicode code points, not always user-perceived characters (grapheme clusters). For example, some emoji sequences and letters plus combining accents contain more than one rune. `[]rune` is the correct standard-library answer for most interview problems, but full grapheme-aware reversal requires a Unicode text-segmentation library and a clearly defined product requirement.
 
-for l,rp:=0,len(r)-1;l<rp;l,rp=l+1,rp-1{
-    r[l],r[rp]=r[rp],r[l]
-}
+## Complexity
 
-fmt.Println(string(r))
-```
+| Approach | Time | Extra space |
+| --- | --- | --- |
+| `[]byte` two pointers | `O(n)` bytes | `O(n)` |
+| `[]rune` two pointers | `O(n)` runes | `O(n)` |
 
----
+The extra space is needed because Go strings cannot be modified in place.
 
-# 16. Substring
+## Edge cases
 
-```go
-s := "golang"
+- Empty string: returns `""`.
+- One character: returns the same string.
+- Palindrome: returns the same sequence.
+- Unicode input: use the rune version.
+- Spaces: `fmt.Scan` reads only up to whitespace; use `bufio.Reader` if the input can be a sentence.
 
-fmt.Println(s[1:4])
-```
+## Interview answer
 
-Output
+“Because strings are immutable, I convert the input to a mutable slice and swap from both ends in `O(n)` time. I use `[]byte` for ASCII and `[]rune` for Unicode text, because indexing a string and `len` operate on UTF-8 bytes.”
 
-```
-ola
-```
+## Run
 
----
-
-# 17. String Formatting
-
-```go
-fmt.Sprintf()
-```
-
-Example
-
-```go
-name := "Go"
-
-s := fmt.Sprintf("Hello %s", name)
-```
-
----
-
-# 18. Escape Characters
-
-```go
-"\n"
-```
-
-New line
-
----
-
-```go
-"\t"
-```
-
-Tab
-
----
-
-```go
-"\""
-```
-
-Double quote
-
----
-
-```go
-"\\"
-```
-
-Backslash
-
----
-
-# 19. Raw String
-
-```go
-s := `Hello
-World`
-```
-
-Output
-
-```
-Hello
-World
-```
-
-No escaping needed.
-
----
-
-# 20. Useful Functions
-
-Length
-
-```go
-len(s)
-```
-
----
-
-Compare
-
-```go
-strings.Compare(a,b)
-```
-
----
-
-Equal Fold
-
-```go
-strings.EqualFold(a,b)
-```
-
-Case-insensitive comparison.
-
----
-
-Repeat
-
-```go
-strings.Repeat("Go",3)
-```
-
-↓
-
-```
-GoGoGo
-```
-
----
-
-Trim
-
-```go
-strings.TrimSpace(s)
-```
-
----
-
-# 21. Common Interview Questions
-
-## Reverse String
-
-Use
-
-```
-[]rune
-```
-
----
-
-## Is Palindrome
-
-Compare from both ends.
-
----
-
-## Valid Anagram
-
-Count frequencies (map or array).
-
----
-
-## Longest Common Prefix
-
-Compare characters column by column.
-
----
-
-## Count Characters
-
-```go
-map[rune]int
-```
-
----
-
-## First Unique Character
-
-Frequency map + second pass.
-
----
-
-# 22. Common Mistakes
-
-❌ Trying to modify string
-
-```go
-s[0]='H'
-```
-
----
-
-❌ Using byte loop for Unicode
-
-```go
-for i:=0;i<len(s);i++
-```
-
-on
-
-```
-😊
-नमस्ते
-こんにちは
-```
-
----
-
-✅ Use
-
-```go
-for _, r := range s
-```
-
-or
-
-```go
-[]rune(s)
-```
-
----
-
-❌ Assuming len() gives characters
-
-```go
-len("😊")
-```
-
-returns
-
-```
-4
-```
-
-bytes, not 1 character.
-
----
-
-# 23. Quick Revision (30 Seconds)
-
-✅ String = immutable sequence of bytes
-
-✅ `s[i]` returns a `byte`, not a string
-
-✅ `len(s)` returns bytes, not characters
-
-✅ Use `range` or `[]rune` for Unicode
-
-✅ Convert to `[]byte` or `[]rune` to modify
-
-✅ Use `strings.Builder` for efficient concatenation
-
-✅ Use the `strings` package for common operations
-
----
-
-# One-Line Memory Trick
-
-```
-String = Read-only bytes 📜
-
-byte = 1 byte (ASCII)
-
-rune = Unicode character 🌍
-
-range = Decodes runes
-
-[]byte = Editable bytes
-
-[]rune = Editable Unicode
-
-strings.Builder = Fast string construction 🚀
+```bash
+go run ./challenges/02-reverse-string/reverse.go
 ```
