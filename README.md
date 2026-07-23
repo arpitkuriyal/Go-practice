@@ -104,6 +104,10 @@ Use this checklist to guide your revision. Aim to explain each item aloud, then 
    go test -race ./...
    ```
 
+## Contributing
+
+Contributions that improve the Go notes, examples, tests, and interview revision material are welcome. Please read [CONTRIBUTING.md](CONTRIBUTING.md) before opening a pull request. This repository is available under the [MIT License](LICENSE).
+
 ## Featured practice challenges
 
 Use this list as a question bank. First read only the **challenge** column and solve it yourself. If you get stuck, open the linked **solution** in this repository and compare your approach after you finish.
