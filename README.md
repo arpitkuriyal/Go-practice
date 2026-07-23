@@ -1,6 +1,6 @@
-# Go Practice and Interview Revision
+# Go + SQL Revision Notes and Interview Practice
 
-This repository is a hands-on Go revision workspace. It contains short programs, notes, and challenges for strengthening Go fundamentals before technical interviews.
+This repository is a hands-on Go and SQL revision workspace. It contains short programs, SQL examples, notes, and challenges for strengthening backend fundamentals before technical interviews.
 
 ## Topics covered
 
@@ -12,7 +12,7 @@ This repository is a hands-on Go revision workspace. It contains short programs,
 | Concurrency | Goroutines, channels, `select`, mutexes, `WaitGroup`, concurrent maps, worker pools, semaphores, rate limiting, caches, `sync.Once`, and `errgroup` |
 | Testing and tooling | Table-driven tests, subtests, fakes, benchmarks, fuzzing, race detection, `go vet`, modules, and formatting |
 | HTTP and APIs | A beginner-to-production revision path covering request/response flow, methods, headers, statuses, routing, middleware, JSON APIs, safe input handling, timeouts, testing, and graceful shutdown |
-| Databases and SQL | `database/sql`, parameterized queries, connection pools, migrations, transactions, locking, indexes, PostgreSQL features, and repository testing |
+| Databases and SQL | A beginner-to-advanced path from tables and CRUD SQL to Go repositories, migrations, transactions, indexes, PostgreSQL features, and repository testing |
 | Challenges | Nine progressively harder problems covering Go basics, data handling, interfaces, concurrency, strings, error handling, and HTTP middleware |
 
 ## Repository layout
@@ -40,12 +40,16 @@ This repository is a hands-on Go revision workspace. It contains short programs,
 │   ├── 08-testing-and-tooling/
 │   └── 09-concurrency-patterns/
 ├── database/
-│   ├── 01-sql-basics/          # SQL, parameterized queries, and pooling
-│   ├── 02-migrations/          # Versioned schema changes and constraints
+│   ├── 01-sql-basics/
+│   ├── 02-migrations/
 │   ├── 03-transactions-and-locking/
 │   ├── 04-query-performance/
 │   ├── 05-postgresql-features/
-│   └── 06-repository-testing/
+│   ├── 06-repository-testing/
+│   ├── 07-relational-queries/
+│   ├── 08-schema-design/
+│   ├── 09-query-patterns/
+│   └── 10-database-operations/
 └── http/
     ├── 01-basics/
     ├── 02-methods/
@@ -53,7 +57,7 @@ This repository is a hands-on Go revision workspace. It contains short programs,
     ├── 04-server-and-routing/
     ├── 05-middleware/
     ├── 06-json-encoding/
-    └── 07-production-checklist/ # Production HTTP patterns and tested API
+    └── 07-production-checklist/
 ```
 
 ## Running an example
