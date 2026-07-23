@@ -1,4 +1,4 @@
-# 08. Testing and Tooling: Check Your Go Code
+# 10. Testing and Tooling: Check Your Go Code
 
 A Go test is a function in a `_test.go` file:
 
@@ -85,5 +85,5 @@ go mod tidy                                # clean module dependencies
 ## Run this lesson
 
 ```bash
-go test -bench . ./concepts/08-testing-and-tooling
+go test -bench . ./concepts/10-testing-and-tooling
 ```

@@ -1,4 +1,4 @@
-# 09. Concurrency Patterns: Useful Building Blocks
+# 11. Concurrency Patterns: Useful Building Blocks
 
 Learn the basic goroutine, channel, mutex, and context lesson first. These patterns combine those tools for common problems.
 
@@ -61,5 +61,5 @@ Before adding a cache, answer: what is cached, how old can it be, how is it inva
 ## Test
 
 ```bash
-go test -race ./concepts/09-concurrency-patterns
+go test -race ./concepts/11-concurrency-patterns
 ```

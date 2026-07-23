@@ -1,4 +1,4 @@
-# 04. Concurrent Maps: Share a Map Safely
+# 07. Concurrent Maps: Share a Map Safely
 
 ## The problem
 
@@ -80,5 +80,5 @@ It does not stop goroutines from changing a map at the same time. Use it togethe
 ## Run
 
 ```bash
-go run ./concepts/04-concurrent-maps
+go run ./concepts/07-concurrent-maps
 ```

@@ -1,4 +1,4 @@
-# 02. Maps: Look Up Values by Key
+# 03. Maps: Look Up Values by Key
 
 A map stores a value under a key. Think of a phone book: use a name (key) to find a number (value).
 
@@ -70,5 +70,5 @@ But assigning a new map inside that function does not replace the caller’s map
 ## Run
 
 ```bash
-go run ./concepts/02-maps
+go run ./concepts/03-maps
 ```

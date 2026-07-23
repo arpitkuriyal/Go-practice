@@ -1,4 +1,4 @@
-# 01. Slices: Flexible Lists in Go
+# 02. Slices: Flexible Lists in Go
 
  
 
@@ -94,5 +94,5 @@ func add(items []int, value int) []int {
 ## Run
 
 ```bash
-go run ./concepts/01-slices
+go run ./concepts/02-slices
 ```

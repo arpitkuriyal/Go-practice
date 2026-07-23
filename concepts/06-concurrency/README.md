@@ -1,4 +1,4 @@
-# 03. Concurrency: Doing Work at the Same Time
+# 06. Concurrency: Doing Work at the Same Time
 
 A goroutine is a function running concurrently with other Go code.
 
@@ -89,5 +89,5 @@ Use `WaitGroup` to wait; use `Mutex` to protect data. They solve different probl
 ## Run
 
 ```bash
-go run ./concepts/03-concurrency
+go run ./concepts/06-concurrency
 ```

@@ -30,15 +30,17 @@ This repository is a hands-on Go and SQL revision workspace. It contains short p
 │   ├── 08-string-pattern-matching/ # Substring and anagram matching
 │   └── 09-http-auth-middleware/    # HTTP middleware and context
 ├── concepts/
-│   ├── 01-slices/
-│   ├── 02-maps/
-│   ├── 03-concurrency/
-│   ├── 04-concurrent-maps/
+│   ├── 01-strings-and-runes/
+│   ├── 02-slices/
+│   ├── 03-maps/
+│   ├── 04-structs-methods-and-pointers/
 │   ├── 05-interfaces/
-│   ├── 06-errors/
-│   ├── 07-context/
-│   ├── 08-testing-and-tooling/
-│   └── 09-concurrency-patterns/
+│   ├── 06-concurrency/
+│   ├── 07-concurrent-maps/
+│   ├── 08-errors/
+│   ├── 09-context/
+│   ├── 10-testing-and-tooling/
+│   └── 11-concurrency-patterns/
 ├── database/
 │   ├── 01-sql-basics/
 │   ├── 02-migrations/

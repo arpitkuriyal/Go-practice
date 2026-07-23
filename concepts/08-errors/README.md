@@ -1,4 +1,4 @@
-# 06. Errors: Tell the Caller What Went Wrong
+# 08. Errors: Tell the Caller What Went Wrong
 
 Go functions often return two values: the result and an error.
 
@@ -69,5 +69,5 @@ Use `errors.Is` to ask “is this kind of error?” Use `errors.As` to ask “do
 ## Test
 
 ```bash
-go test ./concepts/06-errors
+go test ./concepts/08-errors
 ```

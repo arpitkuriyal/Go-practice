@@ -1,4 +1,4 @@
-# 07. Context: Stop Work That No Longer Matters
+# 09. Context: Stop Work That No Longer Matters
 
 A context lets one part of a program tell another part: “stop this work,” “there is a deadline,” or “this request has a trace ID.”
 
@@ -75,5 +75,5 @@ Use values only for small request-scoped information that crosses layers, such a
 ## Test
 
 ```bash
-go test -race ./concepts/07-context
+go test -race ./concepts/09-context
 ```
