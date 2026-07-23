@@ -1,161 +1,96 @@
-# Interfaces: Revision
+# 05. Interfaces: Work With Behavior, Not One Concrete Type
 
-## `any` vs `interface{}`
-
-Since Go 1.18, `any` is simply an alias for `interface{}`.
-
-```go
-type any = interface{}
-```
-
-There is **no difference** in memory, performance, or behavior.
-
-Use:
-
-- `any` → when a value can be **any type**.
-- `interface { ... }` → when defining **behavior** (methods).
-
-```go
-func Print(v any) {}
-```
+An interface describes methods a value must have. It answers: “what can this value do?”
 
 ```go
 type Speaker interface {
 	Speak()
 }
-```
 
----
+type Dog struct{}
+func (Dog) Speak() { fmt.Println("woof") }
 
-## Mental model
-
-An interface value stores two things:
-
-- **Dynamic type**
-- **Dynamic value**
-
-An interface is `nil` **only when both are nil**.
-
-```go
-var p *User = nil
-var x any = p
-
-fmt.Println(x == nil) // false
-```
-
-Internally:
-
-```
-Dynamic type  : *User
-Dynamic value : nil
-```
-
-Since the dynamic type is `*User`, the interface itself is **not nil**.
-
----
-
-## Rules to remember
-
-| Topic | Rule |
-| --- | --- |
-| `any` vs `interface{}` | `any` is an alias for `interface{}`. Use `any` for arbitrary values and `interface` for defining behavior. |
-| Interface nil | An interface is nil only when both its dynamic type and dynamic value are nil. |
-| Interface satisfaction | Types implement interfaces **implicitly** by having the required method set. |
-| Value receiver | Both `T` and `*T` implement the interface. |
-| Pointer receiver | Only `*T` implements the interface. |
-| Type assertion | Prefer `value, ok := x.(T)` to avoid panics. |
-| Type switch | Use when behavior depends on a small set of dynamic types. |
-| Comparison | Interface values are comparable only if their dynamic values are comparable. Slices, maps, and functions are not comparable (except with `nil`). |
-
----
-
-## Design guidance
-
-- Accept interfaces when your function depends on **behavior**, not a concrete type.
-- Return concrete types unless an interface is genuinely required.
-- Keep interfaces small (often one or two methods).
-- Define interfaces close to where they are used, not in a central `interfaces` package.
-- Use `any` only when a function truly accepts **any value**.
-- If you only need one capability (for example, `Read()` or `Write()`), define a small interface instead of using `any`.
-- Be careful calling methods on a typed `nil` stored inside an interface; the method may dereference the nil receiver.
-
----
-
-## Interview answers
-
-### Pointer receiver or value receiver?
-
-Use a **pointer receiver** when:
-
-- The method modifies the receiver.
-- Copying the value would be expensive.
-- The type contains synchronization primitives (`sync.Mutex`, `sync.RWMutex`, etc.).
-- You want all methods on the type to use pointer receivers consistently.
-
-Use a **value receiver** when:
-
-- The method does not modify the receiver.
-- The type is small (for example, `time.Time`).
-- Value semantics make sense.
-
----
-
-### Why is a nil pointer inside an interface not nil?
-
-Because an interface stores both a **dynamic type** and a **dynamic value**.
-
-```go
-var p *User = nil
-var x any = p
-
-fmt.Println(x == nil) // false
-```
-
-The interface contains:
-
-```
-Dynamic type  : *User
-Dynamic value : nil
-```
-
-Since the dynamic type exists, the interface itself is not `nil`.
-
----
-
-### Why does this panic?
-
-```go
-var a any = []int{1}
-var b any = []int{1}
-
-fmt.Println(a == b)
-```
-
-Because the dynamic values are slices, and slices are **not comparable**.
-
----
-
-### Why use `value, ok := x.(T)`?
-
-A failed single-value type assertion panics.
-
-```go
-v := x.(string) // panic if x is not a string
-```
-
-The safe form avoids the panic.
-
-```go
-v, ok := x.(string)
-
-if ok {
-	fmt.Println(v)
+func sayHello(s Speaker) {
+	s.Speak()
 }
 ```
 
----
+`Dog` satisfies `Speaker` automatically because it has a `Speak` method. Go has no `implements` keyword.
 
-## Run the examples
+## Why interfaces help
+
+The `sayHello` function does not need to know whether it received a `Dog`, `Person`, or another type. It only needs something that can `Speak`.
+
+Keep interfaces small and define them near the code that uses them.
+
+```go
+type Reader interface {
+	Read([]byte) (int, error)
+}
+```
+
+## `any` and `interface{}`
+
+`any` is another name for `interface{}`:
+
+```go
+func printValue(value any) {}
+```
+
+Use `any` when a value can truly be any type. Use a named interface when your function needs a specific behavior.
+
+## Value receiver versus pointer receiver
+
+```go
+type Cat struct{}
+func (Cat) Speak() {}
+```
+
+Both `Cat{}` and `&Cat{}` satisfy `Speaker` because `Speak` has a value receiver.
+
+```go
+type Dog struct{}
+func (*Dog) Speak() {}
+```
+
+Only `&Dog{}` satisfies `Speaker` because `Speak` has a pointer receiver. Use pointer receivers when a method changes the value or copying it would be expensive.
+
+## Type assertions
+
+When an interface may hold different concrete types, check safely:
+
+```go
+value, ok := input.(string)
+if ok {
+	fmt.Println(value)
+}
+```
+
+The one-value form, `input.(string)`, panics when the value is not a string. Use the comma-ok form unless failure is impossible by design.
+
+## The typed-nil surprise
+
+```go
+var user *User = nil
+var value any = user
+
+fmt.Println(value == nil) // false
+```
+
+The interface remembers that its value has type `*User`, even though the pointer inside it is nil. Check carefully before calling methods that may dereference that pointer.
+
+## Rules to remember
+
+- Return concrete types by default; accept an interface when you depend on behavior.
+- Interfaces are satisfied implicitly.
+- An interface is `nil` only when it has no stored type and no stored value.
+- Interface comparison panics if the stored value is not comparable, such as a slice or map.
+
+## Interview answer
+
+“An interface is a small contract of behavior. Types satisfy it implicitly. I accept interfaces when a function needs a capability, keep them small, and use safe type assertions when the concrete type is not guaranteed.”
+
+## Run
 
 ```bash
 go run ./concepts/05-interfaces

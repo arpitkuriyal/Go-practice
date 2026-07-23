@@ -1,6 +1,6 @@
 # 06. JSON APIs: Send and Receive Go Data
 
-## Start simple
+ 
 
 JSON is a common text format for API data.
 

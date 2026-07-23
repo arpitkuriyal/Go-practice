@@ -1,63 +1,84 @@
-# Concurrent Maps: Revision
+# 04. Concurrent Maps: Share a Map Safely
 
-## The rule
+## The problem
 
-A built-in map is not safe for concurrent access when at least one goroutine writes. It can panic with `concurrent map writes`, and even a read racing with a write is unsafe.
+A normal Go map is safe when one goroutine uses it. It is not safe when goroutines read and write it at the same time.
 
+```go
+counts := make(map[string]int)
+go func() { counts["go"]++ }()
+go func() { counts["go"]++ }()
+```
 
+This can cause a race or a `concurrent map writes` crash.
 
-## Quick Revision
+## Start with a mutex
 
-- Regular maps are NOT safe for concurrent access. 
-- Concurrent writes cause a runtime panic. 
-- Concurrent read + write also causes races. 
-- Use sync.Mutex to protect shared maps. 
-- Use sync.RWMutex when reads are much more frequent than writes.
-- Reads also need locking when writes happen concurrently.
-- sync.Map is optimized for read-heavy concurrent workloads.
-- WaitGroup waits for goroutines; it does NOT provide synchronization.
-- Mutex protects shared data; WaitGroup waits for completion.
-- Run `go test -race` to detect data races.
-
-
-## Default solution: `map` + `sync.RWMutex`
+For most programs, put a map and a mutex together in one struct:
 
 ```go
 type Store struct {
-    mu sync.RWMutex
-    m  map[string]int
-}
-
-func (s *Store) Get(key string) (int, bool) {
-    s.mu.RLock()
-    defer s.mu.RUnlock()
-    value, ok := s.m[key]
-    return value, ok
+	mu sync.Mutex
+	m  map[string]int
 }
 
 func (s *Store) Set(key string, value int) {
-    s.mu.Lock()
-    defer s.mu.Unlock()
-    s.m[key] = value
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	s.m[key] = value
 }
 ```
 
-Use `Mutex` first. Choose `RWMutex` only when profiling or workload knowledge shows many independent reads; it has additional coordination cost.
+Only one goroutine can hold a `Mutex` at a time. That makes the map update safe.
 
-## `sync.Map`
+## Reading safely too
 
-`sync.Map` is useful for read-mostly data or independent keys written by many goroutines. It is less type-safe and makes multi-step invariants harder to express. For example, “read, check, then update” often still needs another synchronization strategy.
+If a writer can run at the same time, reads also need protection:
 
-## Interview traps
+```go
+func (s *Store) Get(key string) (int, bool) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	value, ok := s.m[key]
+	return value, ok
+}
+```
 
-- Lock reads as well as writes if a writer can run concurrently.
-- Do not copy a struct containing a mutex after first use.
-- Keep critical sections small, but protect the whole invariant—not just individual lines.
-- `LoadOrStore` is useful for per-key initialization; it is not a replacement for a transaction across multiple keys.
+Use `sync.RWMutex` later when you have many independent reads and few writes:
 
-Verify with:
+```go
+mu.RLock()
+value := m[key]
+mu.RUnlock()
+```
+
+`RWMutex` allows several readers together, but only one writer. Start with `Mutex` unless measurement shows read-heavy contention.
+
+## `WaitGroup` is not a map lock
+
+```go
+wg.Wait() // waits for goroutines to finish
+```
+
+It does not stop goroutines from changing a map at the same time. Use it together with a mutex when you need both waiting and safety.
+
+## What about `sync.Map`?
+
+`sync.Map` is a special concurrent map. It can be useful for read-mostly data or independent keys written by many goroutines. For normal application state, `map` plus a mutex is easier to read, type-safe, and better for rules involving more than one key.
+
+## Rules to remember
+
+- Lock the whole rule, not only one line. A “read balance, check, update balance” sequence needs one lock around all three steps.
+- Do not copy a struct containing a mutex after using it.
+- Keep locked sections short; do not do slow network/database work while holding a lock.
+- Run `go test -race ./...` to find races the program might not visibly crash on.
+
+## Interview answer
+
+“Built-in maps are not safe for concurrent access when writes happen. I normally keep a map behind a mutex, lock both reads and writes when they can overlap, and choose `RWMutex` or `sync.Map` only for a measured need.”
+
+## Run
 
 ```bash
-go test -race ./...
 go run ./concepts/04-concurrent-maps
 ```

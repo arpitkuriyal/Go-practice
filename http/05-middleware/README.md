@@ -1,6 +1,6 @@
 # 05. Middleware: Code That Runs Around a Handler
 
-## Start simple
+ 
 
 Middleware is a wrapper around a handler. It can do something before the handler, after the handler, or stop the request before it reaches the handler.
 

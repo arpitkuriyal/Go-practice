@@ -1,55 +1,73 @@
-# Maps: Revision
+# 02. Maps: Look Up Values by Key
 
-## Quick Revision
-
-- **Nil map:** Read ✓ | Write ✗ (panic)
-- **Initialize:** `make(map[K]V)` or `map[K]V{}`
-- **Maps share** the same underlying hash table.
-- **Passing a map** copies only the map header.
-- **Modifying entries** affects the caller.
-- **Reassigning the map** inside a function doesn't affect the caller.
-- **delete()** is always safe, even if the key doesn't exist.
-- **Key existence:** `value, ok := m[key]`
-- **Iteration order** is intentionally random.
-- **Maps are not safe** for concurrent reads and writes without synchronization.
-
----
-
-## Essential rules
-
-| Operation | Behaviour |
-| --- | --- |
-| Read from a nil map | Safe; returns the value type's zero value. |
-| Write to a nil map | Panics. Initialize with `make` or a literal first. |
-| Missing key | Returns zero value; use `value, ok := m[key]` when zero is meaningful. |
-| Delete missing key | Safe no-op: `delete(m, key)`. |
-| Iteration | Deliberately unspecified order; sort keys if order matters. |
-| Equality | Maps cannot be compared except with `nil`. |
-| Concurrency | A normal map is not safe for concurrent reads and writes. |
-
-## Useful patterns
+A map stores a value under a key. Think of a phone book: use a name (key) to find a number (value).
 
 ```go
-counts[word]++                         // zero value makes counters easy
-groups[key] = append(groups[key], id)  // append works with a nil slice
+ages := map[string]int{"Arpit": 23}
+ages["Neha"] = 24
 
-value, ok := settings["timeout"]
-if !ok { /* choose a default */ }
+fmt.Println(ages["Arpit"]) // 23
 ```
 
-## Concurrency choice
+## Create a map
 
-- Use `map` plus `sync.RWMutex` for most shared state: clear typing and invariants.
-- Use `sync.Map` only for specialized cases, such as read-mostly keys or independent per-key entries.
-- Never rely on a map surviving concurrent access without synchronization; use `go test -race` to find races.
+```go
+counts := make(map[string]int)
+settings := map[string]string{"theme": "dark"}
+```
 
-## Interview traps
+Use `make` when you want an empty map. Use a literal when you already know initial values.
 
-- A map passed to a function can have its entries changed, but assigning a new map to the parameter does not replace the caller's map variable.
-- Map values are not addressable: update a struct value by reading it, modifying a copy, then assigning it back.
-- A nil map works well for read-only optional state, but not for lazy writes without initialization.
+## Read, write, delete
 
-Run the examples:
+```go
+counts["go"]++              // missing int key starts at 0
+delete(counts, "old-value") // safe even if key is absent
+```
+
+Reading a missing key returns the zero value. Use the comma-ok form when zero could also be a real value:
+
+```go
+value, found := counts["go"]
+if !found {
+	// choose a default or handle absence
+}
+```
+
+## Nil maps
+
+```go
+var counts map[string]int
+fmt.Println(counts["go"]) // safe: 0
+// counts["go"] = 1      // panic: map is nil
+```
+
+Initialize a map before writing to it.
+
+## Maps share their stored data
+
+Passing a map to a function lets that function change its entries:
+
+```go
+func addCount(counts map[string]int) {
+	counts["go"]++
+}
+```
+
+But assigning a new map inside that function does not replace the caller’s map variable.
+
+## Rules to remember
+
+- Map keys must be comparable: strings, numbers, booleans, pointers, and comparable structs work. Slices and maps do not.
+- Map iteration order is deliberately unspecified. Sort keys when output order matters.
+- Map values are not addressable. To update a stored struct, read it, change the copy, then store it back.
+- A normal map is not safe for concurrent read/write access. Learn the safe options in the next map lesson.
+
+## Interview answer
+
+“A map gives fast key-to-value lookup. Missing keys return the zero value, so I use comma-ok when I must tell missing apart from zero. I initialize before writing, do not rely on iteration order, and synchronize shared maps.”
+
+## Run
 
 ```bash
 go run ./concepts/02-maps

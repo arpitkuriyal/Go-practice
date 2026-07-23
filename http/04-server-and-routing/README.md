@@ -1,6 +1,6 @@
 # 04. Routing: Send Each URL to the Right Function
 
-## Start simple: what is routing?
+ : what is routing?
 
 Routing answers one question:
 

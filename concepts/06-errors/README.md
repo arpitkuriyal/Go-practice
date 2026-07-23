@@ -1,59 +1,72 @@
-# Errors: Revision
+# 06. Errors: Tell the Caller What Went Wrong
 
-## Mental model
-
-An error is an interface value. Functions return `nil` on success and a non-nil error on failure. Add useful operation context as an error moves up the call stack, while preserving a cause callers need to handle.
+Go functions often return two values: the result and an error.
 
 ```go
-var ErrInvalidEmail = errors.New("invalid email")
-
-return fmt.Errorf("register user: %w", ErrInvalidEmail)
-```
-
-`%w` preserves `ErrInvalidEmail` in the error chain, so the extra message does not prevent correct handling.
-
-## Error tools
-
-| Tool | Use it for | Example |
-| --- | --- | --- |
-| `errors.New` | A stable sentinel condition. | `var ErrInvalidEmail = errors.New("invalid email")` |
-| `fmt.Errorf` with `%w` | Adding operation context and preserving a cause. | `fmt.Errorf("register user: %w", err)` |
-| `errors.Is` | Checking a known error anywhere in a wrapped chain. | `errors.Is(err, ErrInvalidEmail)` |
-| `errors.As` | Extracting a typed error and its fields. | `errors.As(err, &validationErr)` |
-
-## Sentinel versus typed errors
-
-Use a **sentinel error** when the caller only needs the category of failure:
-
-```go
-if errors.Is(err, ErrInvalidEmail) {
-	// Tell the client to correct the email address.
+user, err := findUser(id)
+if err != nil {
+	return err
 }
 ```
 
-Use a **typed error** when the caller needs structured details. `ValidateAge` returns `*ValidationError`, so callers can inspect the invalid field and reason:
+`nil` means no error. A non-nil error explains why the operation failed.
+
+## A known error: sentinel errors
+
+Use `errors.New` for an expected condition callers may need to handle:
+
+```go
+var ErrInvalidEmail = errors.New("invalid email")
+```
+
+The caller can make a decision:
+
+```go
+if errors.Is(err, ErrInvalidEmail) {
+	// ask the user to correct the email
+}
+```
+
+## Add useful context with `%w`
+
+```go
+return fmt.Errorf("register user: %w", ErrInvalidEmail)
+```
+
+The message now says which operation failed, but `%w` keeps the original error available to `errors.Is`.
+
+```go
+errors.Is(err, ErrInvalidEmail) // true
+```
+
+Do not compare a wrapped error with `==`; that only compares the outer error.
+
+## Errors with details
+
+Sometimes a caller needs more than a yes/no category. This lesson’s `ValidationError` has a field and reason:
 
 ```go
 var validationErr *ValidationError
 if errors.As(err, &validationErr) {
-	fmt.Println(validationErr.Field, validationErr.Reason)
+	fmt.Println(validationErr.Field)
 }
 ```
 
-## Rules to remember
+Use `errors.Is` to ask “is this kind of error?” Use `errors.As` to ask “does this error contain this type with extra details?”
 
-- Do not use `err == ErrInvalidEmail` after wrapping; use `errors.Is`.
-- Wrap at a meaningful operation boundary: `"load user: %w"` is useful; `"failed: %w"` is usually not.
-- Use `%w` only when the caller should inspect the original cause. Use `%v` when intentionally hiding implementation details.
-- Return errors upward; normally log them once at the application boundary.
-- Do not use `panic` for ordinary input validation, missing records, or network failures.
-- Keep public error messages free from passwords, tokens, and internal infrastructure details.
+## Good error habits
 
-## Interview answer: `errors.Is` or `errors.As`?
+- Return errors to the layer that can handle them.
+- Add context such as `"load user: %w"`, not vague text such as `"failed"`.
+- Usually log an error once at the application boundary; logging it at every layer creates duplicates.
+- Do not use `panic` for normal bad input, missing records, or network failures.
+- Do not put secrets or internal infrastructure details in errors sent to users.
 
-Use `errors.Is` to ask whether an error represents a known condition. Use `errors.As` when you need a particular error type and the data it contains.
+## Interview answer
 
-## Run the tests
+“Errors are normal return values in Go. I use sentinel errors for known conditions, wrap errors with `%w` to add operation context, check categories with `errors.Is`, and use `errors.As` when callers need structured details.”
+
+## Test
 
 ```bash
 go test ./concepts/06-errors

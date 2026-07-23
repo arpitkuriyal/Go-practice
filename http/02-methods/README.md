@@ -1,6 +1,6 @@
 # 02. HTTP Methods: What Does the Client Want to Do?
 
-## Start simple
+ 
 
 The HTTP method tells the server what kind of action the client wants.
 

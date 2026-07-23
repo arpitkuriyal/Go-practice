@@ -1,46 +1,64 @@
-# Concurrency Patterns: Last-Minute Revision
+# 09. Concurrency Patterns: Useful Building Blocks
 
-## Worker pool, fan-out, and fan-in
+Learn the basic goroutine, channel, mutex, and context lesson first. These patterns combine those tools for common problems.
 
-- A **worker pool** has a bounded number of workers reading jobs from one channel. Use it to limit parallelism.
-- **Fan-out** sends independent work to several workers. **Fan-in** merges their results into one consumer channel.
-- Close the jobs channel after the producer is done; wait for workers before closing a shared results channel.
-- Pass `context.Context` through the whole pipeline so a caller can cancel every stage.
+## Worker pool: limit parallel work
 
-## Semaphore and rate limiter
+If you have 1,000 jobs, starting 1,000 goroutines may overwhelm a database or API. A worker pool starts a fixed number of workers and gives them jobs through a channel.
 
-- A buffered channel is a simple semaphore: acquire by sending a token, release by receiving it.
-- Always make acquire context-aware and always release after a successful acquire.
-- A token-bucket rate limiter allows a short burst, then refills at a fixed rate. Return `429 Too Many Requests` when a request is rejected.
+```text
+jobs → worker 1 ─┐
+     → worker 2 ─┼→ results
+     → worker 3 ─┘
+```
 
-## Cache choices
+The included `WorkerPool` limits how many jobs run at once. Use it for batch processing, file work, or calls to a limited external service.
 
-| Cache | Eviction rule | Good for |
+## Semaphore: a small concurrency limit
+
+A semaphore is a limited number of tokens:
+
+```text
+3 tokens → at most 3 operations can run
+```
+
+The `Semaphore` example uses a buffered channel. `Acquire` gets a token; `Release` returns it. Always release a token after a successful acquire, usually with `defer`.
+
+## Rate limiter: limit how often work starts
+
+Concurrency limit and rate limit are different:
+
+| Tool | Limits |
+| --- | --- |
+| Semaphore | How many operations run at the same time. |
+| Rate limiter | How many operations may start in a time period. |
+
+The example starts with a small burst of tokens and adds a token at each interval. Call `Stop` when finished so its ticker goroutine can exit.
+
+## Cache: remember a result
+
+| Cache | Simple meaning | Good for |
 | --- | --- | --- |
-| TTL | Remove entries after time expires. | Data with a freshness window. |
-| LRU | Remove the least recently used entry at capacity. | Bounded memory with locality of access. |
+| TTL cache | Forget a value after a time limit. | Data that can be slightly old. |
+| LRU cache | Remove the least recently used value when full. | A fixed memory limit with repeated lookups. |
 
-`patterns.go` includes safe TTL and LRU examples. Production caches also need observability, size limits, and a clear invalidation strategy.
+The TTL cache removes expired values when `Get` is called. The LRU cache keeps recently used values at the front of a list. Both are protected by a mutex.
 
-## `sync.Once` and `errgroup`
+Before adding a cache, answer: what is cached, how old can it be, how is it invalidated, and what happens on a miss?
 
-- Use `sync.Once` for one-time initialization. The function must be safe to run exactly once; do not use it for work that should be retried after failure without an explicit design.
-- `errgroup` is from `golang.org/x/sync/errgroup`. It combines a `WaitGroup` with error propagation and is ideal for independent concurrent tasks that should cancel together.
+## Rules to remember
 
-```go
-group, ctx := errgroup.WithContext(ctx)
-group.Go(func() error { return fetch(ctx, "first") })
-group.Go(func() error { return fetch(ctx, "second") })
-if err := group.Wait(); err != nil { /* handle first error */ }
-```
+- Pass context through worker and semaphore work so callers can cancel.
+- Close the jobs channel after the producer finishes sending jobs.
+- Wait for workers before closing a shared results channel.
+- Keep cache size and lifetime bounded so memory cannot grow forever.
+- Test concurrent patterns with `go test -race`.
 
-Install it only when you need it:
+## Interview answer
 
-```bash
-go get golang.org/x/sync/errgroup
-```
+“I use a worker pool to bound parallel jobs, a semaphore to limit concurrent resource use, a rate limiter to limit request starts, and a cache when I can define freshness and invalidation. Each pattern needs cancellation and clear cleanup.”
 
-Run the examples with race detection:
+## Test
 
 ```bash
 go test -race ./concepts/09-concurrency-patterns

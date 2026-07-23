@@ -1,65 +1,97 @@
-# Slices: Revision
+# 01. Slices: Flexible Lists in Go
 
-## Mental model
+ 
 
-A slice is a small header pointing at an underlying array:
+A slice is a list whose length can grow or shrink.
 
 ```go
-type sliceHeader struct {
-    data *T
-    len  int
-    cap  int
+numbers := []int{10, 20, 30}
+numbers = append(numbers, 40)
+fmt.Println(numbers) // [10 20 30 40]
+```
+
+Use a slice when you do not know the exact number of items ahead of time.
+
+## Array versus slice
+
+```go
+array := [3]int{1, 2, 3} // always exactly 3 items
+slice := []int{1, 2, 3}  // can grow with append
+```
+
+| Array | Slice |
+| --- | --- |
+| Fixed size. | Flexible length. |
+| Size is part of its type: `[3]int`. | Size is not part of its type: `[]int`. |
+| Less common for application lists. | Used constantly in Go programs. |
+
+## `len` and `cap`
+
+```go
+items := make([]int, 3, 5)
+fmt.Println(len(items)) // 3: items you can use now
+fmt.Println(cap(items)) // 5: room before Go needs a new array
+```
+
+A slice is a small description of an underlying array: where it starts, how many values are visible (`len`), and how much room it has (`cap`). You normally do not need to think about this until sharing and `append` matter.
+
+## The most important `append` rule
+
+Always keep the result:
+
+```go
+items = append(items, 40)
+```
+
+`append` may reuse the old backing array or create a new larger one. Either way, it returns the slice you should use next.
+
+## Slices can share data
+
+```go
+original := []int{1, 2, 3}
+part := original[:2]
+part[0] = 99
+
+fmt.Println(original) // [99 2 3]
+```
+
+`part` and `original` point at the same underlying values. This is fast, but it can surprise you.
+
+To make an independent copy:
+
+```go
+copyOfItems := append([]int(nil), original...)
+```
+
+## Passing a slice to a function
+
+The slice description is copied, but its visible elements are usually shared.
+
+```go
+func changeFirst(items []int) {
+	items[0] = 100 // caller sees this change
 }
 ```
 
-Copying a slice copies the header, not its elements. Two slices can therefore change the same backing array.
+Appending inside a function does not update the caller’s slice length unless you return the new slice:
 
-## Rules to remember
+```go
+func add(items []int, value int) []int {
+	return append(items, value)
+}
+```
 
-| Topic | Rule |
-| --- | --- |
-| `len(s)` | Number of accessible elements. |
-| `cap(s)` | Elements available before `append` must allocate a new backing array. |
-| `append` | Always use its returned slice: `s = append(s, value)`. |
-| Function argument | A slice header is passed by value, but its elements remain shared. |
-| Copy safely | `clone := append([]T(nil), original...)` or `slices.Clone(original)`. |
-| Delete | `s = append(s[:i], s[i+1:]...)`; clear removed reference slots when memory retention matters. |
+## Common traps
 
+- `nil` slice and empty slice both have length zero, but `nil` is `nil`. JSON often encodes them as `null` and `[]`.
+- Removing an item with `append(items[:i], items[i+1:]...)` can change the backing array. Copy first when callers must not observe changes.
+- Keeping a tiny part of a huge slice can keep the large array in memory. Copy the small part when necessary.
 
-## Things to Remember
+## Interview answer
 
-1. Variables are passed by value.
+“A slice is a flexible view over an underlying array. `len` is the visible size and `cap` is available room. I always keep the result of `append` and remember that slices can share their underlying values.”
 
-2. Passing a pointer lets you modify the original value.
-
-3. A slice is just:
-   - pointer
-   - length
-   - capacity
-
-4. Copying a slice copies only the slice header.
-
-5. Multiple slices can share one backing array.
-
-6. append may:
-   - reuse the existing backing array
-   - allocate a new one
-
-7. Always capture the return value of append.
-
-
-## Interview traps
-
-- `append` can overwrite values visible through another slice when spare capacity exists.
-- Appending inside a function does not update the caller's slice length unless the function returns the new slice.
-- `nil` and empty slices both have length zero, but `nil` is `nil`; JSON commonly encodes them as `null` and `[]` respectively.
-- Keeping a tiny subslice of a very large slice can keep the whole backing array alive. Copy the needed portion when appropriate.
-
-## Say this in an interview
-
-“Slices are descriptors over arrays. Element changes are visible through aliases. `append` may allocate, so I always retain its return value and avoid relying on backing-array sharing.”
-
-Run the examples:
+## Run
 
 ```bash
 go run ./concepts/01-slices

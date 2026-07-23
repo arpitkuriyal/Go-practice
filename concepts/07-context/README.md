@@ -1,58 +1,78 @@
-# Context: Revision
+# 07. Context: Stop Work That No Longer Matters
 
-## Mental model
+A context lets one part of a program tell another part: “stop this work,” “there is a deadline,” or “this request has a trace ID.”
 
-`context.Context` carries cancellation, deadlines, and request-scoped values across API boundaries. It does not replace normal function parameters or become a bag for optional values.
+The most common use is cancelling database, HTTP, or goroutine work when a user leaves a page or a timeout is reached.
 
 ```go
-ctx, cancel := context.WithTimeout(parent, time.Second)
+ctx, cancel := context.WithTimeout(context.Background(), time.Second)
 defer cancel()
 
-err := Wait(ctx, ready)
+err := doWork(ctx)
 ```
 
-Always call the returned `cancel`, even if the deadline may not fire. It releases resources associated with the derived context.
+`cancel` should always be called. It releases resources even when the timeout never happens.
 
-## Rules to remember
+## Put context first
 
-| Topic | Rule |
-| --- | --- |
-| Parameter position | Put `context.Context` first: `func Load(ctx context.Context, id string)`. |
-| Parent context | Propagate the caller's context; do not replace it with `context.Background()` during request work. |
-| Timeouts | Derive them with `context.WithTimeout` and always call `cancel`. |
-| Cancellation | Check `ctx.Done()` in work that can block or run a long time. |
-| Error | Return `ctx.Err()` after cancellation: `context.Canceled` or `context.DeadlineExceeded`. |
-| Values | Use only for request-scoped cross-cutting data, such as a trace ID, with a private typed key. |
+```go
+func LoadUser(ctx context.Context, id string) error
+```
 
-## Cancellation-aware channel work
+Context is the first parameter by Go convention. Accept the caller’s context and pass it to the next operation:
 
-`Stream` sends values from a goroutine. A send can block forever if a consumer stops early, so the send must also observe cancellation:
+```go
+row := db.QueryRowContext(ctx, query, id)
+```
+
+Do not replace request work with `context.Background()`: that throws away the caller’s cancellation and deadline.
+
+## Notice cancellation
+
+`ctx.Done()` is a channel that becomes ready when the context is cancelled or expires:
+
+```go
+select {
+case <-ctx.Done():
+	return ctx.Err()
+case result := <-results:
+	return result
+}
+```
+
+`ctx.Err()` is normally `context.Canceled` or `context.DeadlineExceeded`.
+
+## Why goroutines need context
+
+A goroutine can get stuck forever when it tries to send on a channel that nobody reads. The `Stream` example avoids that by watching both the send and cancellation:
 
 ```go
 select {
 case out <- value:
+	// consumer received the value
 case <-ctx.Done():
-	return
+	return // caller stopped caring
 }
 ```
 
-The producer owns `out`, so it closes it. Consumers should not close a channel they only receive from. `Wait` uses the same pattern for a blocking receive: it returns normally when work is ready or returns the context error if cancellation wins.
+The sender closes the channel because it knows when no more values will be sent. A receiver should not close a channel it only receives from.
 
-## Avoiding goroutine leaks
+## Context values
 
-Every goroutine needs a clear exit condition: completed work, a closed input channel, a delivered result, or context cancellation. Make cancellation observable at every blocking send and receive. If a consumer can stop early, it should cancel the shared context so upstream producers can exit.
+Use values only for small request-scoped information that crosses layers, such as a request ID or authenticated user. Use a private typed key. Do not use context as a bag for optional function arguments, database handles, or configuration.
 
-## Interview answers
+## Rules to remember
 
-### Why is `context.Context` the first argument?
+- Pass context to blocking work: database queries, outbound HTTP calls, and goroutines.
+- Always call the cancel function returned by `WithCancel`, `WithTimeout`, or `WithDeadline`.
+- Every goroutine needs an exit path: completed work, closed input, sent result, or cancellation.
+- A timeout is not a replacement for making slow code efficient; it is a safety boundary.
 
-It makes request lifetime control visible in the signature and follows the standard-library convention. The caller can then cancel the full call chain consistently.
+## Interview answer
 
-### Who closes a channel?
+“Context carries cancellation and deadlines through a call chain. I accept it as the first parameter, propagate it to blocking work, call cancel for derived contexts, and make goroutines observe `ctx.Done()` so they do not leak.”
 
-The sending side that knows no more values will be sent. Closing from a receiver risks a send-on-closed-channel panic.
-
-## Run the tests
+## Test
 
 ```bash
 go test -race ./concepts/07-context

@@ -1,6 +1,6 @@
 # 06. Repository Testing: Prove Your SQL Works
 
-## Start simple: what is a repository?
+ : what is a repository?
 
 A repository is the small Go layer that runs SQL and converts database rows into Go values.
 

@@ -1,63 +1,92 @@
-# Concurrency: Revision
+# 03. Concurrency: Doing Work at the Same Time
 
-## Quick Revision
-
-- **Goroutines** run concurrently with the main goroutine.
-- **The program exits** when the main goroutine exits.
-- **Use `sync.WaitGroup`** to wait for goroutines.
-- **Don't use `time.Sleep`** for synchronization.
-- **Go 1.22+** creates a new loop variable for each iteration.
-- **Unbuffered channels** require a sender and receiver at the same time.
-- **Buffered channels** can store values up to their capacity.
-- **`range` on a channel** stops only after the channel is closed.
-- **`x++` is not atomic;** protect shared data with a `sync.Mutex`.
-- **Use `go test -race`** to detect data races.
-
----
-
-## Core tools
-
-| Tool | Use it for |
-| --- | --- |
-| Goroutine | Concurrent unit of work: `go work()`. |
-| `sync.WaitGroup` | Waiting for a known set of goroutines. Call `Add` before starting them. |
-| Channel | Communicating ownership or results between goroutines. |
-| `select` | Waiting on multiple channel operations, cancellation, or timeouts. |
-| `sync.Mutex` | Protecting shared mutable state. |
-| `context.Context` | Cancellation, deadlines, and request-scoped metadata. |
-
-## Must-know rules
-
-- The program exits when `main` returns.
-- Use `sync.WaitGroup`, not `time.Sleep`, to wait for goroutines.
-- An unbuffered channel requires both a sender and a receiver.
-- A buffered channel blocks only when it is full (send) or empty (receive).
-- Close a channel only from the sending side, and only when no more values will be sent.
-- `range` over a channel exits only after the channel is closed.
-- Protect shared mutable state with `sync.Mutex` or another synchronization primitive.
-- Run concurrent code with `go test -race ./...` to detect data races.
-
-## Modern Go loop note
-
-Go 1.22+ creates a fresh loop variable for each iteration declared with `:=`.
-
-Passing the value explicitly is still a good habit because it's clear and works in every Go version:
+A goroutine is a function running concurrently with other Go code.
 
 ```go
-for _, job := range jobs {
-	go func(job Job) {
-		process(job)
-	}(job)
-}
+go fmt.Println("runs in another goroutine")
 ```
 
-## Interview answer: Channel or Mutex?
+The main function can finish before that goroutine gets a chance to run. Use a `WaitGroup` when you need to wait for known work.
 
-- Use **`sync.Mutex`** when multiple goroutines share and modify the same data.
-- Use **channels** to communicate values, distribute work, or build pipelines.
-- Prefer the simpler design—channels are not automatically better than mutexes.
+```go
+var wg sync.WaitGroup
+wg.Add(1)
+go func() {
+	defer wg.Done()
+	fmt.Println("finished")
+}()
+wg.Wait()
+```
 
-Run the examples:
+## Channels: goroutines talking to each other
+
+A channel lets one goroutine send a value and another receive it.
+
+```go
+ch := make(chan int)
+go func() { ch <- 42 }()
+
+value := <-ch
+fmt.Println(value)
+```
+
+An unbuffered channel needs a sender and receiver to meet. A buffered channel can hold a limited number of values first:
+
+```go
+ch := make(chan int, 2)
+ch <- 1
+ch <- 2
+```
+
+## Closing and ranging
+
+The sender that knows no more values will be sent closes the channel:
+
+```go
+close(ch)
+```
+
+`for value := range ch` stops only after the channel is closed. Receivers normally do not close channels, because a sender could panic by sending after close.
+
+## Shared values need protection
+
+This is unsafe when several goroutines run it:
+
+```go
+count++ // read, add, write: not one atomic step
+```
+
+Use a mutex for shared data:
+
+```go
+mu.Lock()
+count++
+mu.Unlock()
+```
+
+Use `WaitGroup` to wait; use `Mutex` to protect data. They solve different problems.
+
+## Which tool should I choose?
+
+| Need | Start with |
+| --- | --- |
+| Wait for known goroutines | `sync.WaitGroup` |
+| Send jobs or results between goroutines | Channel |
+| Protect one shared value or data structure | `sync.Mutex` |
+| Stop work after timeout/cancellation | `context.Context` |
+
+## Rules and traps
+
+- Do not use `time.Sleep` to wait for work; it guesses instead of synchronizing.
+- Call `wg.Add` before starting the goroutine.
+- Go 1.22+ gives each `:=` loop iteration a new loop variable. Passing the value as a function argument is still very clear.
+- Run `go test -race ./...` to find data races.
+
+## Interview answer
+
+“Goroutines run concurrent work. I use a `WaitGroup` to wait, channels to pass values or jobs, and a mutex for shared mutable state. I use the race detector to verify concurrent code.”
+
+## Run
 
 ```bash
 go run ./concepts/03-concurrency

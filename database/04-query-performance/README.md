@@ -1,6 +1,6 @@
 # 04. Query Performance: Make SQL Faster for the Right Reason
 
-## Start simple: what makes a query slow?
+ : what makes a query slow?
 
 When a table has only ten rows, almost any query feels fast. As it grows, the database may need to inspect many rows, sort them, or join them with another table.
 
