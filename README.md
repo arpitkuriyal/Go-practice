@@ -11,7 +11,7 @@ This repository is a hands-on Go revision workspace. It contains short programs,
 | Context | Detailed examples for cancellation, deadlines, context-aware channels, and goroutine-leak prevention |
 | Concurrency | Goroutines, channels, `select`, mutexes, `WaitGroup`, concurrent maps, worker pools, semaphores, rate limiting, caches, `sync.Once`, and `errgroup` |
 | Testing and tooling | Table-driven tests, subtests, fakes, benchmarks, fuzzing, race detection, `go vet`, modules, and formatting |
-| HTTP and APIs | Request/response lifecycle, methods, headers, status codes, routing, middleware, JSON APIs, safe request handling, timeouts, and graceful shutdown |
+| HTTP and APIs | A beginner-to-production revision path covering request/response flow, methods, headers, statuses, routing, middleware, JSON APIs, safe input handling, timeouts, testing, and graceful shutdown |
 | Databases and SQL | `database/sql`, parameterized queries, connection pools, migrations, transactions, locking, indexes, PostgreSQL features, and repository testing |
 | Challenges | Nine progressively harder problems covering Go basics, data handling, interfaces, concurrency, strings, error handling, and HTTP middleware |
 

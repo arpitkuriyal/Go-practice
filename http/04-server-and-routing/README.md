@@ -1,273 +1,93 @@
-# net/http Core Types
+# Go `net/http`: Handlers, ServeMux, and Routing
 
-These are the most important building blocks of Go HTTP server.
+## revision
 
-```text id="q6iwod"
-http.Handler
-http.HandlerFunc
-ResponseWriter
-*Request
-ServeMux
+```text
+request → ServeMux matches method/path → handler → ResponseWriter
 ```
 
-They work together when request comes to your server.
+| Type | Job |
+| --- | --- |
+| `http.Handler` | Interface with `ServeHTTP(http.ResponseWriter, *http.Request)`. |
+| `http.HandlerFunc` | Function adapter that implements `http.Handler`. |
+| `http.ResponseWriter` | Writes response headers, status, and body. |
+| `*http.Request` | Holds incoming request data and context. |
+| `http.ServeMux` | Standard-library router that maps patterns to handlers. |
 
----
+## Handlers
 
-# Full Flow
+Any type implementing `ServeHTTP` is a handler. A function is commonly converted with `http.HandlerFunc`:
 
-```text id="9kpl5z"
-Client Request
-   ↓
-ServeMux matches route
-   ↓
-Handler / HandlerFunc runs
-   ↓
-Uses Request data
-   ↓
-Writes response using ResponseWriter
+```go
+func healthz(w http.ResponseWriter, r *http.Request) {
+	w.WriteHeader(http.StatusNoContent)
+}
+
+var handler http.Handler = http.HandlerFunc(healthz)
 ```
 
----
+Use a struct handler when it needs dependencies such as a service, logger, or database:
 
-# 1. http.Handler
+```go
+type userHandler struct{ service UserService }
 
-## Definition
-
-`http.Handler` is an interface.
-
-```go id="pw5x8q"
-type Handler interface {
-	ServeHTTP(http.ResponseWriter, *http.Request)
+func (h userHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
+	// h.service uses r.Context()
 }
 ```
 
-Any type with `ServeHTTP()` method becomes a handler.
+## Explicit routing with `ServeMux`
 
----
+Create a mux rather than registering on global `http.DefaultServeMux`:
 
-## Example
-
-```go id="jgk7ek"
-type HomeHandler struct{}
-
-func (h HomeHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
-	fmt.Fprint(w, "Hello")
-}
-```
-
-Now `HomeHandler` can serve requests.
-
----
-
-## Use Case
-
-* Custom handlers
-* Middleware
-* Routers
-* Struct-based dependencies
-
----
-
-# 2. http.HandlerFunc
-
-## Definition
-
-Adapter that converts normal function into Handler.
-
-```go id="7c8f0v"
-type HandlerFunc func(http.ResponseWriter, *http.Request)
-```
-
-This is why normal functions work in Go HTTP.
-
----
-
-## Example
-
-```go id="6j3n9x"
-func home(w http.ResponseWriter, r *http.Request) {
-	fmt.Fprint(w, "Home")
-}
-```
-
-Used as:
-
-```go id="i9e8o1"
-http.HandleFunc("/", home)
-```
-
-Internally Go converts function into `HandlerFunc`.
-
----
-
-## Why Useful?
-
-You don't need struct every time.
-
-Use simple function for small routes.
-
----
-
-# 3. ResponseWriter
-
-## Definition
-
-Used to send response back to client.
-
-```go id="c9z2n1"
-w http.ResponseWriter
-```
-
-It is an interface.
-
----
-
-## Common Uses
-
-### Write body
-
-```go id="m6f1p7"
-fmt.Fprint(w, "Hello")
-```
-
-### Set headers
-
-```go id="x7h3l9"
-w.Header().Set("Content-Type", "application/json")
-```
-
-### Set status code
-
-```go id="r2j4q6"
-w.WriteHeader(201)
-```
-
----
-
-## Why Interface?
-
-Different internal implementations can still behave same way.
-
----
-
-# 4. *Request
-
-## Definition
-
-Incoming HTTP request object.
-
-```go id="j0v2m4"
-r *http.Request
-```
-
-Contains all client request data.
-
----
-
-## Why Pointer `*`?
-
-* Large struct
-* Avoid copying
-* Efficient
-* Shared request object
-
----
-
-## Important Fields
-
-### Method
-
-```go id="h8s1q5"
-r.Method
-```
-
-### URL Path
-
-```go id="k7d2n3"
-r.URL.Path
-```
-
-### Query Params
-
-```go id="u3f8p1"
-r.URL.Query().Get("page")
-```
-
-### Headers
-
-```go id="w5m7r2"
-r.Header.Get("Authorization")
-```
-
-### Body
-
-```go id="v1n6c4"
-r.Body
-```
-
----
-
-# 5. ServeMux
-
-## Definition
-
-Default Go router / multiplexer.
-
-It matches URL path to handlers.
-
-```go id="b9p2l7"
+```go
 mux := http.NewServeMux()
+mux.HandleFunc("GET /healthz", healthz)
+mux.HandleFunc("GET /users/{id}", getUser)
+mux.HandleFunc("POST /users", createUser)
+
+server := &http.Server{Addr: ":8080", Handler: mux}
 ```
 
----
+Go 1.22+ supports method-qualified patterns and path values. Read a value with `r.PathValue("id")`. `ServeMux` selects the most specific matching pattern and handles a known path with a wrong method as `405 Method Not Allowed`.
 
-## Example
+## ResponseWriter rules
 
-```go id="e6r1m8"
-mux.HandleFunc("/", home)
-mux.HandleFunc("/about", about)
-
-http.ListenAndServe(":8080", mux)
+```go
+w.Header().Set("Content-Type", "application/json; charset=utf-8")
+w.WriteHeader(http.StatusCreated)
+_, err := w.Write(body)
 ```
 
----
+- Set headers first.
+- `WriteHeader` commits the status; if omitted, the first `Write` commits `200 OK`.
+- Do not write a body for `204 No Content`.
+- Return after handling an error to avoid writing a second response.
 
-## Flow
+## Request essentials
 
-```text id="q1m3s8"
-/about request
-↓
-ServeMux checks routes
-↓
-Runs about handler
+```go
+method := r.Method
+path := r.URL.Path
+query := r.URL.Query().Get("page")
+token := r.Header.Get("Authorization")
+ctx := r.Context()
 ```
 
----
+Treat request input as untrusted. Validate path/query values, bound bodies, and propagate `ctx` to work that can block.
 
-## Why Called Multiplexer?
+## Testing a route
 
-Because it routes many paths to many handlers.
+```go
+req := httptest.NewRequest(http.MethodGet, "/users/42", nil)
+rec := httptest.NewRecorder()
+mux.ServeHTTP(rec, req)
 
----
-
-
-# Quick Memory Trick
-
-```text id="u0s4p9"
-Handler      -> object that handles request
-HandlerFunc  -> function as handler
-ResponseWriter -> sends response
-Request      -> incoming request data
-ServeMux     -> router
+if rec.Code != http.StatusOK { /* fail test */ }
 ```
 
----
+An explicit mux makes this test independent of global state.
 
-# Interview Lines
+## Interview answer
 
-* `http.Handler` is core interface with `ServeHTTP()`.
-* `http.HandlerFunc` converts functions into handlers.
-* `ResponseWriter` writes response body, headers, status.
-* `*Request` contains request info.
-* `ServeMux` routes paths to handlers.
+“`http.Handler` is Go’s core server abstraction. `HandlerFunc` adapts ordinary functions, and `ServeMux` routes method/path patterns to handlers. I use an explicit mux, path values, request contexts, and `httptest` for isolated tests.”

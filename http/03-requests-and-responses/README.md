@@ -1,281 +1,90 @@
-# HTTP Basics — Headers, Status Codes, Body, Query Params, Path Params
+# Requests and Responses: Headers, Parameters, Bodies, and Statuses
 
----
+## revision
 
-# 1. Headers
+| Part | Use | Go access |
+| --- | --- | --- |
+| Path parameter | Identifies a resource: `/users/42` | `r.PathValue("id")` |
+| Query parameter | Filters/options: `?page=2&limit=20` | `r.URL.Query().Get("page")` |
+| Header | Metadata: auth, format, cache policy | `r.Header.Get("Authorization")` |
+| Body | Payload for create/update operations | `r.Body` |
+| Context | Cancellation/deadline for request work | `r.Context()` |
 
-## Definition
+## Headers
 
-Headers are **metadata** sent with request or response.
+Headers are case-insensitive metadata. Common examples:
 
-They describe extra information about the message.
+| Header | Meaning |
+| --- | --- |
+| `Content-Type` | Format of this body: `application/json`. |
+| `Accept` | Formats the client can receive. |
+| `Authorization` | Credentials, commonly `Bearer <token>`. |
+| `Location` | URL of a resource created by a `201` response. |
+| `Cache-Control` | Caching policy. |
+| `Set-Cookie` | Instructs the client to store a cookie. |
 
-```text id="zk9h7m"
-Key: Value
+Set response headers before the response starts:
+
+```go
+w.Header().Set("Content-Type", "application/json; charset=utf-8")
+w.Header().Set("Cache-Control", "no-store")
 ```
 
----
+## Status codes worth knowing
 
-## Request Header Example
+| Code | Use it when |
+| --- | --- |
+| `200 OK` | Successful read or response with a body. |
+| `201 Created` | A resource was created; include `Location` when possible. |
+| `202 Accepted` | Work was accepted but completes asynchronously. |
+| `204 No Content` | Success with no body. |
+| `400 Bad Request` | Malformed JSON, invalid syntax, or malformed parameters. |
+| `401 Unauthorized` | Authentication is missing or invalid. |
+| `403 Forbidden` | Identity is known but lacks permission. |
+| `404 Not Found` | Route or resource does not exist. |
+| `405 Method Not Allowed` | Path exists but method is unsupported; set `Allow`. |
+| `409 Conflict` | State conflicts, such as duplicate unique email. |
+| `422 Unprocessable Content` | Syntax is valid but business validation fails. |
+| `429 Too Many Requests` | Rate limit exceeded. |
+| `500 Internal Server Error` | Unexpected server failure; do not expose internals. |
 
-```http id="y6n1l4"
-GET /users HTTP/1.1
-Authorization: Bearer token123
-Content-Type: application/json
-User-Agent: Chrome
+## Parameters: path versus query
+
+```text
+GET /users/42?include=posts
+     └── resource ID  └── option for the representation
 ```
 
----
+Path parameters identify the resource. Query parameters filter, paginate, sort, or choose a representation. Parse and validate query values rather than trusting them:
 
-## Response Header Example
-
-```http id="4n57wy"
-HTTP/1.1 200 OK
-Content-Type: application/json
-Set-Cookie: session=abc
-```
-
----
-
-## Common Headers
-
-* `Authorization` → login/auth token
-* `Content-Type` → body format
-* `Accept` → expected response type
-* `Set-Cookie` → save cookie
-* `Cache-Control` → cache rules
-
----
-
-## Go Example
-
-```go id="ij3n7j"
-token := r.Header.Get("Authorization")
-
-w.Header().Set("Content-Type", "application/json")
-```
-
----
-
-# 2. Status Codes
-
-## Definition
-
-Status codes tell client what happened after request.
-
----
-
-## Common Status Codes
-
-### Success (2xx)
-
-```text id="1m5nki"
-200 OK         -> success
-201 Created    -> new resource created
-204 No Content -> success, no body
-```
-
-### Client Error (4xx)
-
-```text id="s9j7m1"
-400 Bad Request   -> invalid input
-401 Unauthorized -> login required
-403 Forbidden    -> no permission
-404 Not Found    -> route/resource missing
-405 Method Not Allowed
-```
-
-### Server Error (5xx)
-
-```text id="4g7kg6"
-500 Internal Server Error
-502 Bad Gateway
-503 Service Unavailable
-```
-
----
-
-## Go Example
-
-```go id="jv4n0p"
-w.WriteHeader(http.StatusCreated)
-fmt.Fprint(w, "User created")
-```
-
----
-
-# 3. Body
-
-## Definition
-
-Body contains actual data sent in request or response.
-
----
-
-## Request Body Example
-
-```json id="x9x7hf"
-{
-  "name": "Arpit",
-  "email": "arpit@mail.com"
+```go
+limit, err := strconv.Atoi(r.URL.Query().Get("limit"))
+if err != nil || limit < 1 || limit > 100 {
+	http.Error(w, "limit must be between 1 and 100", http.StatusBadRequest)
+	return
 }
 ```
 
-Used in:
+## Bodies
 
-* POST
-* PUT
-* PATCH
+The request body is a stream. Bound untrusted input and close only bodies you create as an HTTP client; Go's server manages `r.Body` for handlers.
 
----
-
-## Response Body Example
-
-```json id="tdn9s2"
-{
-  "message": "success"
-}
+```go
+r.Body = http.MaxBytesReader(w, r.Body, 1<<20) // 1 MiB limit
 ```
 
----
+For JSON, decode once into a request type, validate it, and return a consistent JSON response. See the JSON lesson for the full pattern.
 
-## Go Read Body
+## Response order: a common trap
 
-```go id="k2v0wa"
-data, _ := io.ReadAll(r.Body)
+```go
+w.Header().Set("Content-Type", "application/json") // first
+w.WriteHeader(http.StatusCreated)                     // second
+json.NewEncoder(w).Encode(value)                       // last
 ```
 
----
+The first `Write` or `WriteHeader` commits status and headers. A second `WriteHeader` does not replace the first one.
 
-## Go Write Body
+## Interview answer
 
-```go id="efp3f8"
-fmt.Fprint(w, "Hello")
-```
-
----
-
-# 4. Query Params
-
-## Definition
-
-Extra values in URL after `?`
-
-Used for:
-
-* filtering
-* search
-* pagination
-* sorting
-
----
-
-## Example
-
-```text id="lf3b2k"
-GET /products?category=phone&page=2
-```
-
-Here:
-
-* `category = phone`
-* `page = 2`
-
----
-
-## Go Example
-
-```go id="99h4qf"
-page := r.URL.Query().Get("page")
-category := r.URL.Query().Get("category")
-```
-
----
-
-## Multiple Params
-
-```text id="qq4g5p"
-?search=go&sort=asc&limit=10
-```
-
-Use `&` to separate params.
-
----
-
-# 5. Path Params
-
-## Definition
-
-Dynamic values inside URL path.
-
-Used to identify specific resource.
-
----
-
-## Example
-
-```text id="2g2g35"
-GET /users/10
-GET /posts/55
-GET /orders/999
-```
-
-Here:
-
-* `10` = user id
-* `55` = post id
-
----
-
-## Meaning
-
-```text id="t2j3li"
-GET /users       -> all users
-GET /users/10    -> user with id 10
-```
-
----
-
-## In Standard net/http
-
-Need to parse manually:
-
-```go id="2w4qk2"
-id := strings.TrimPrefix(r.URL.Path, "/users/")
-```
-
----
-
-## In Routers Like Gin / Chi
-
-```go id="9w7mye"
-id := c.Param("id")
-```
-
----
-
-# Quick Difference
-
-```text id="d6vt2g"
-Path Param  = identifies resource
-Query Param = modifies request
-```
-
-Example:
-
-```text id="k2mylo"
-/users/10?active=true
-```
-
-* `10` = path param
-* `active=true` = query param
-
----
-
-# Interview Lines
-
-* Headers carry metadata like auth and content type.
-* Status codes show result of request.
-* Body contains actual payload.
-* Query params are optional filters/options.
-* Path params identify specific resource.
+“Path parameters name a resource; query parameters modify the request. I validate both, set headers before writing a response, choose a status that describes the outcome, and pass `r.Context()` to downstream work.”

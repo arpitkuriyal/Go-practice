@@ -1,240 +1,72 @@
-# HTTP Methods — GET, POST, PUT, DELETE
+# HTTP Methods: Intent, Safety, and Idempotency
 
-## Purpose
+## revision
 
-HTTP Methods tell the server what action the client wants to perform.
+| Method | Normal intent | Safe* | Idempotent** | Typical success |
+| --- | --- | --- | --- | --- |
+| `GET` | Read a representation | Yes | Yes | `200 OK` |
+| `HEAD` | Read headers only | Yes | Yes | `200 OK` |
+| `POST` | Create or trigger an action | No | Usually no | `201 Created` / `202 Accepted` |
+| `PUT` | Replace a known resource | No | Yes | `200 OK` / `204 No Content` |
+| `PATCH` | Partially update a resource | No | Depends on operation | `200 OK` / `204 No Content` |
+| `DELETE` | Remove a resource | No | Usually yes | `204 No Content` |
 
----
+*Safe means the request should not change server state.
+**Idempotent means repeating the same request has the same intended final server state; its response can still differ.
 
-## Common Methods
-
-### GET
-
-Used to fetch/read data.
-
-```text
-GET /users
-GET /products
-```
-
-* Should not modify server data
-* Can be cached
-* Used for viewing/searching
-
----
-
-### POST
-
-Used to create new data.
+## Resource-oriented routes
 
 ```text
-POST /users
-POST /login
+GET    /users          list users
+POST   /users          create a user
+GET    /users/{id}     get one user
+PUT    /users/{id}     replace one user
+PATCH  /users/{id}     change selected fields
+DELETE /users/{id}     remove one user
 ```
 
-* Usually sends data in request body
-* Used for signup, login, create resource
+This is a useful convention, not a law. A command that does not fit a resource can be explicit: `POST /reports/{id}:publish`.
 
----
+## `PUT` versus `PATCH`
 
-### PUT
+- `PUT` sends the full desired representation. Omitted fields commonly mean replacement/default values.
+- `PATCH` sends only changes. Define its semantics carefully; a patch such as “increment balance” is not idempotent.
 
-Used to update/replace existing data.
+## Why idempotency matters
 
-```text
-PUT /users/5
-PUT /profile
-```
+A timeout does not prove that the server did not process a request. Clients, proxies, and load balancers can retry. Retrying the same `POST /orders` might create duplicate orders, while repeating a `PUT /users/7` with the same representation should leave the final state unchanged.
 
-* Usually sends updated data in body
-* Replaces existing resource
+For a retryable create operation, consider an idempotency key stored with the result.
 
----
+## Method handling in Go
 
-### DELETE
-
-Used to remove data.
-
-```text 
-DELETE /users/5
-DELETE /posts/10
-```
-
-* Deletes existing resource
-
----
-
-## REST API Pattern
-
-```text 
-GET     /users      -> list users
-GET     /users/1    -> get one user
-POST    /users      -> create user
-PUT     /users/1    -> update user
-DELETE  /users/1    -> delete user
-```
-
----
-
-## Go Example
+Modern Go `ServeMux` can match method and path together:
 
 ```go
-func users(w http.ResponseWriter, r *http.Request) {
-	switch r.Method {
-	case "GET":
-		fmt.Fprint(w, "Get users")
-	case "POST":
-		fmt.Fprint(w, "Create user")
-	case "PUT":
-		fmt.Fprint(w, "Update user")
-	case "DELETE":
-		fmt.Fprint(w, "Delete user")
-	default:
-		http.Error(w, "Method Not Allowed", 405)
-	}
+mux.HandleFunc("GET /users/{id}", getUser)
+mux.HandleFunc("POST /users", createUser)
+```
+
+For a shared endpoint, switch explicitly and return `405` with an `Allow` header:
+
+```go
+switch r.Method {
+case http.MethodGet:
+	// list
+case http.MethodPost:
+	// create
+default:
+	w.Header().Set("Allow", "GET, POST")
+	http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
 }
 ```
 
----
+## Interview traps
 
-## Important Concepts
+- `401 Unauthorized` means authentication is missing or invalid; `403 Forbidden` means authentication succeeded but permission is denied.
+- `DELETE` can return `404` on a repeated call and still be idempotent: the target remains absent.
+- A `GET` with side effects is unsafe and may be cached, prefetched, or retried unexpectedly.
 
-### Idempotent
+## One-line interview answer
 
-**Idempotent** means:
-
-> Sending the same request multiple times produces the same final server state as sending it once.
-
-It does **not** always mean same response body.
-It means the end result on server remains unchanged after first successful request.
-
----
-
-## Why It Matters
-
-* Safe retries when network fails
-* Load balancers may retry requests
-* Clients can resend requests without duplicating data
-* Important in distributed systems
-
----
-
-## Methods Explanation
-
-### GET
-
-Used to read data.
-
-```text
-GET /users/1
-GET /products
-```
-
-Calling 1 time or 10 times does not change database state.
-
-Same final result: data is only fetched.
-
----
-
-### PUT
-
-Used to replace/update resource.
-
-```text
-PUT /users/1
-{
-  "name": "Arpit"
-}
-```
-
-Send once:
-
-```text
-User name = Arpit
-```
-
-Send again with same body:
-
-```text
-User name still = Arpit
-```
-
-No extra duplicate resource created.
-
----
-
-### DELETE (Usually)
-
-Used to remove resource.
-
-```text
-DELETE /users/1
-```
-
-First call:
-
-```text
-User deleted
-```
-
-Second call:
-
-```text
-User already missing
-```
-
-Even if second response may be `404 Not Found`, final state is same:
-
-```text
-User does not exist
-```
-
-So usually considered idempotent.
-
----
-
-### POST
-
-Used to create new resource.
-
-```text
-POST /orders
-```
-
-First request:
-
-```text
-Order #101 created
-```
-
-Second same request:
-
-```text 
-Order #102 created
-```
-
-Now two resources exist.
-
-So repeated request changes state again.
-
-Not idempotent.
-
----
-
-## Quick Memory Trick
-
-```text 
-GET     -> Read again = same
-PUT     -> Set again = same
-DELETE  -> Remove again = same end state
-POST    -> Create again = duplicate/new data
-```
-
----
-
-## One Liner
-
-Idempotent means repeating the same request keeps the final server state unchanged. GET, PUT, DELETE are idempotent; POST usually is not.
-
-
-HTTP methods define action type: GET reads, POST creates, PUT updates, DELETE removes.
+“Methods express intent. I make reads safe, use idempotent operations when retries are expected, distinguish replacement (`PUT`) from partial update (`PATCH`), and return `405` for unsupported methods.”

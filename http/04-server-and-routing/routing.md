@@ -1,256 +1,60 @@
-# Routing in Go HTTP
+# Routing Patterns: From Static Paths to APIs
 
-Routing means:
+## Static and dynamic routes
 
-> Matching incoming URL path to the correct handler.
-
-When request comes:
-
-```text id="v8r3n1"
-/users
-/about
-/products/10
+```go
+mux.HandleFunc("GET /about", about)          // static
+mux.HandleFunc("GET /users/{id}", getUser)   // dynamic
 ```
 
-Router decides which function should run.
+Static routes are fixed. Dynamic route segments capture a value:
 
----
-
-# 1. Static Routes
-
-## Definition
-
-Fixed URL paths.
-
-Examples:
-
-```text id="a5n2qk"
-/
-///about
-/contact
-/login
-```
-
-These paths do not change.
-
----
-
-## Go Example
-
-```go id="m2c7p9"
-mux := http.NewServeMux()
-
-mux.HandleFunc("/", home)
-mux.HandleFunc("/about", about)
-mux.HandleFunc("/contact", contact)
-```
-
----
-
-## Meaning
-
-```text id="x4f1wr"
-/about request -> about handler
-/contact request -> contact handler
-```
-
----
-
-## Use Cases
-
-* Homepage
-* About page
-* Login page
-* Health check
-
----
-
-# 2. Dynamic Routes
-
-## Definition
-
-Routes containing variable values.
-
-Examples:
-
-```text id="q8j4sy"
-/users/10
-/users/25
-/products/99
-/posts/500
-```
-
-Here IDs change dynamically.
-
----
-
-## Why Needed?
-
-Instead of creating:
-
-```text id="pw6m0t"
-/users/1
-/users/2
-/users/3
-```
-
-Use one route pattern:
-
-```text id="g7w1dn"
-/users/{id}
-```
-
----
-
-## Standard net/http (manual parse)
-
-```go id="k1m8te"
-func user(w http.ResponseWriter, r *http.Request) {
-	id := strings.TrimPrefix(r.URL.Path, "/users/")
-	fmt.Fprint(w, "User ID:", id)
+```go
+func getUser(w http.ResponseWriter, r *http.Request) {
+	id := r.PathValue("id")
+	if id == "" {
+		http.NotFound(w, r)
+		return
+	}
 }
 ```
 
----
+Use path values to identify a resource and query values for filtering/pagination:
 
-## Router Libraries
-
-Using Gin or Chi:
-
-```go id="h2n4vf"
-r.GET("/users/:id", handler)
+```text
+GET /users/42?include=posts
+     └─ resource  └─ representation option
 ```
 
----
+## Method-aware patterns
 
-# 3. Multiple Handlers
+Modern `net/http` can keep method selection in the router:
 
-## Definition
-
-Different routes use different handlers.
-
-```go id="t9y1op"
-mux.HandleFunc("/", home)
-mux.HandleFunc("/users", users)
-mux.HandleFunc("/orders", orders)
-mux.HandleFunc("/login", login)
+```go
+mux.HandleFunc("GET /users", listUsers)
+mux.HandleFunc("POST /users", createUser)
+mux.HandleFunc("GET /users/{id}", getUser)
 ```
 
----
+This avoids a large method switch and gives correct method handling. If one handler intentionally owns several methods, switch on `r.Method` and set `Allow` for `405` responses.
 
-## Flow
+## Grouping a prefix
 
-```text id="e5d7wa"
-/users  -> users handler
-/login  -> login handler
-/orders -> orders handler
+Use a child mux and `http.StripPrefix` for a small standard-library subrouter:
+
+```go
+api := http.NewServeMux()
+api.HandleFunc("GET /users", listUsers)
+
+root := http.NewServeMux()
+root.Handle("/api/", http.StripPrefix("/api", api))
 ```
 
----
+Keep API versions explicit when their contracts differ: `/api/v1/...`.
 
-## Why Important?
+## Routing pitfalls
 
-Keeps code modular.
-
-Bad:
-
-```go id="g0q9kt"
-one giant handler for everything
-```
-
-Good:
-
-```go id="p7r2lm"
-separate handlers per feature
-```
-
----
-
-# 4. Subrouters Patterns
-
-## Definition
-
-Group related routes under common prefix.
-
-Examples:
-
-```text id="z4f6mj"
-/api/users
-/api/orders
-/api/products
-
-/admin/users
-/admin/settings
-```
-
----
-
-## Why Useful?
-
-Organized route structure.
-
-```text id="x6v3pq"
-/api/*    -> public API
-/admin/*  -> admin panel
-/v1/*     -> version 1 API
-```
-
----
-
-## Example with ServeMux
-
-```go id="u3k8ra"
-apiMux := http.NewServeMux()
-apiMux.HandleFunc("/users", users)
-apiMux.HandleFunc("/orders", orders)
-
-mainMux := http.NewServeMux()
-mainMux.Handle("/api/", http.StripPrefix("/api", apiMux))
-```
-
----
-
-## With Chi / Gin Easier
-
-```go id="m8s4wb"
-r.Route("/api", func(r chi.Router) {
-	r.Get("/users", users)
-	r.Get("/orders", orders)
-})
-```
-
----
-
-# Full Example
-
-```go id="r1v7np"
-mux := http.NewServeMux()
-
-mux.HandleFunc("/", home)          // static
-mux.HandleFunc("/about", about)   // static
-mux.HandleFunc("/users/", user)   // dynamic manual
-mux.HandleFunc("/login", login)   // multiple handler
-
-http.ListenAndServe(":8080", mux)
-```
-
----
-
-# Quick Memory Trick
-
-```text id="k2d9go"
-Static route   -> fixed path
-Dynamic route  -> variable path
-Multiple handlers -> many routes many funcs
-Subrouter      -> grouped routes by prefix
-```
-
----
-
-# Interview Lines
-
-* Routing maps URL paths to handlers.
-* Static routes are fixed paths.
-* Dynamic routes contain variables like IDs.
-* Multiple handlers keep code modular.
-* Subrouters group related endpoints under prefixes.
+- Do not manually parse paths with `strings.TrimPrefix` when `PathValue` can express the route.
+- Validate every path value before using it in a query or lookup.
+- Avoid an all-purpose `"/"` handler that implements the whole API with nested `if` statements.
+- Prefer resource nouns (`/users`) over verbs (`/getUsers`) for conventional CRUD endpoints.
