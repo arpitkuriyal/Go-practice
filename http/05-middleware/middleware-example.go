@@ -77,13 +77,7 @@ func main() {
 	mux.HandleFunc("/", home)
 
 	// chain middleware
-	handler := logging(
-		auth(
-			recovery(
-				cors(mux),
-			),
-		),
-	)
+	handler := recovery(logging(cors(auth(mux))))
 
 	fmt.Println("Server running on :8080")
 

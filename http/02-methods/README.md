@@ -1,72 +1,89 @@
-# HTTP Methods: Intent, Safety, and Idempotency
+# 02. HTTP Methods: What Does the Client Want to Do?
 
-## revision
+## Start simple
 
-| Method | Normal intent | Safe* | Idempotent** | Typical success |
-| --- | --- | --- | --- | --- |
-| `GET` | Read a representation | Yes | Yes | `200 OK` |
-| `HEAD` | Read headers only | Yes | Yes | `200 OK` |
-| `POST` | Create or trigger an action | No | Usually no | `201 Created` / `202 Accepted` |
-| `PUT` | Replace a known resource | No | Yes | `200 OK` / `204 No Content` |
-| `PATCH` | Partially update a resource | No | Depends on operation | `200 OK` / `204 No Content` |
-| `DELETE` | Remove a resource | No | Usually yes | `204 No Content` |
-
-*Safe means the request should not change server state.
-**Idempotent means repeating the same request has the same intended final server state; its response can still differ.
-
-## Resource-oriented routes
+The HTTP method tells the server what kind of action the client wants.
 
 ```text
-GET    /users          list users
-POST   /users          create a user
-GET    /users/{id}     get one user
-PUT    /users/{id}     replace one user
-PATCH  /users/{id}     change selected fields
-DELETE /users/{id}     remove one user
+GET  /users  → "give me users"
+POST /users  → "create a user"
 ```
 
-This is a useful convention, not a law. A command that does not fit a resource can be explicit: `POST /reports/{id}:publish`.
+The most useful methods to learn first are:
 
-## `PUT` versus `PATCH`
+| Method | Plain-English meaning | Typical use |
+| --- | --- | --- |
+| `GET` | Read something | List users or get one user. |
+| `POST` | Create something | Create a user or submit a form. |
+| `PUT` | Replace something | Replace all stored details for one user. |
+| `PATCH` | Change part of something | Update only a user's name. |
+| `DELETE` | Remove something | Delete one user. |
 
-- `PUT` sends the full desired representation. Omitted fields commonly mean replacement/default values.
-- `PATCH` sends only changes. Define its semantics carefully; a patch such as “increment balance” is not idempotent.
+## First runnable example
 
-## Why idempotency matters
+Run [`methods-example.go`](methods-example.go):
 
-A timeout does not prove that the server did not process a request. Clients, proxies, and load balancers can retry. Retrying the same `POST /orders` might create duplicate orders, while repeating a `PUT /users/7` with the same representation should leave the final state unchanged.
-
-For a retryable create operation, consider an idempotency key stored with the result.
-
-## Method handling in Go
-
-Modern Go `ServeMux` can match method and path together:
-
-```go
-mux.HandleFunc("GET /users/{id}", getUser)
-mux.HandleFunc("POST /users", createUser)
+```bash
+go run ./http/02-methods/methods-example.go
 ```
 
-For a shared endpoint, switch explicitly and return `405` with an `Allow` header:
+In another terminal, try:
+
+```bash
+curl http://localhost:8080/users
+curl -X POST http://localhost:8080/users
+curl -X DELETE http://localhost:8080/users
+```
+
+The example uses `r.Method` to decide what to do:
 
 ```go
 switch r.Method {
 case http.MethodGet:
-	// list
+	// list users
 case http.MethodPost:
-	// create
+	// create a user
 default:
-	w.Header().Set("Allow", "GET, POST")
-	http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
+	// tell the client this URL does not support that method
 }
 ```
 
-## Interview traps
+Use constants such as `http.MethodGet` rather than spelling `"GET"` yourself.
 
-- `401 Unauthorized` means authentication is missing or invalid; `403 Forbidden` means authentication succeeded but permission is denied.
-- `DELETE` can return `404` on a repeated call and still be idempotent: the target remains absent.
-- A `GET` with side effects is unsafe and may be cached, prefetched, or retried unexpectedly.
+## `405 Method Not Allowed`
 
-## One-line interview answer
+`/users` can be a valid URL while `DELETE /users` is not a valid action in this API. Return `405` and tell the client which methods work:
 
-“Methods express intent. I make reads safe, use idempotent operations when retries are expected, distinguish replacement (`PUT`) from partial update (`PATCH`), and return `405` for unsupported methods.”
+```go
+w.Header().Set("Allow", "GET, POST")
+http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
+```
+
+## Next level: routes and methods together
+
+Go 1.22+ can match both a method and path:
+
+```go
+mux.HandleFunc("GET /users", listUsers)
+mux.HandleFunc("POST /users", createUser)
+mux.HandleFunc("GET /users/{id}", getUser)
+```
+
+This is a cleaner choice when different handlers own different operations. You will use it in the routing lesson.
+
+## Important interview idea: idempotency
+
+An operation is **idempotent** when repeating the same request has the same final result as doing it once.
+
+```text
+GET /users/1          read again: no data changed
+PUT /users/1 {name}   set the same name again: final state is the same
+DELETE /users/1       delete again: user is still absent
+POST /users           create again: usually creates another user
+```
+
+So `GET`, `PUT`, and usually `DELETE` are idempotent; `POST` usually is not. This matters because a client may retry after a network timeout.
+
+## Interview answer
+
+“Methods express intent: `GET` reads, `POST` creates, `PUT` replaces, `PATCH` partially updates, and `DELETE` removes. I return `405` for unsupported methods and think about idempotency when retries are possible.”

@@ -1,93 +1,111 @@
-# Go `net/http`: Handlers, ServeMux, and Routing
+# 04. Routing: Send Each URL to the Right Function
 
-## revision
+## Start simple: what is routing?
+
+Routing answers one question:
+
+> “This request came for this URL. Which Go function should run?”
 
 ```text
-request → ServeMux matches method/path → handler → ResponseWriter
+GET /       → home function
+GET /about  → about function
 ```
 
-| Type | Job |
-| --- | --- |
-| `http.Handler` | Interface with `ServeHTTP(http.ResponseWriter, *http.Request)`. |
-| `http.HandlerFunc` | Function adapter that implements `http.Handler`. |
-| `http.ResponseWriter` | Writes response headers, status, and body. |
-| `*http.Request` | Holds incoming request data and context. |
-| `http.ServeMux` | Standard-library router that maps patterns to handlers. |
+In Go, `http.ServeMux` is the built-in router. “Mux” means multiplexer: it chooses one handler from many handlers.
 
-## Handlers
-
-Any type implementing `ServeHTTP` is a handler. A function is commonly converted with `http.HandlerFunc`:
-
-```go
-func healthz(w http.ResponseWriter, r *http.Request) {
-	w.WriteHeader(http.StatusNoContent)
-}
-
-var handler http.Handler = http.HandlerFunc(healthz)
-```
-
-Use a struct handler when it needs dependencies such as a service, logger, or database:
-
-```go
-type userHandler struct{ service UserService }
-
-func (h userHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
-	// h.service uses r.Context()
-}
-```
-
-## Explicit routing with `ServeMux`
-
-Create a mux rather than registering on global `http.DefaultServeMux`:
+## `http.NewServeMux()` from zero
 
 ```go
 mux := http.NewServeMux()
-mux.HandleFunc("GET /healthz", healthz)
-mux.HandleFunc("GET /users/{id}", getUser)
-mux.HandleFunc("POST /users", createUser)
+```
 
+This line creates an empty router. Next, add routes:
+
+```go
+mux.HandleFunc("/", home)
+mux.HandleFunc("/about", about)
+```
+
+Finally, give the router to the server:
+
+```go
+http.ListenAndServe(":8080", mux)
+```
+
+Now the full flow is:
+
+```text
+browser requests /about
+        ↓
+mux finds the /about route
+        ↓
+about(w, r) runs
+        ↓
+about writes the response
+```
+
+Run [`http-core-example.go`](http-core-example.go), then open `/` and `/about`:
+
+```bash
+go run ./http/04-server-and-routing/http-core-example.go
+```
+
+## What is a handler?
+
+A handler is anything that can serve an HTTP request. The core interface is:
+
+```go
+type Handler interface {
+	ServeHTTP(http.ResponseWriter, *http.Request)
+}
+```
+
+Most beginners use a normal function:
+
+```go
+func home(w http.ResponseWriter, r *http.Request) {
+	fmt.Fprint(w, "Home page")
+}
+```
+
+`HandleFunc` automatically turns that function into a handler. Later, a struct can implement `ServeHTTP` when it needs dependencies such as a database or service.
+
+## Why `NewServeMux` instead of `http.HandleFunc`?
+
+This also works:
+
+```go
+http.HandleFunc("/", home)
+http.ListenAndServe(":8080", nil)
+```
+
+It uses a global router called `http.DefaultServeMux`. That is fine for a tiny first program. In a larger application, create your own mux so routes are explicit, isolated, and easy to test:
+
+```go
+mux := http.NewServeMux()
+mux.HandleFunc("/", home)
 server := &http.Server{Addr: ":8080", Handler: mux}
 ```
 
-Go 1.22+ supports method-qualified patterns and path values. Read a value with `r.PathValue("id")`. `ServeMux` selects the most specific matching pattern and handles a known path with a wrong method as `405 Method Not Allowed`.
+Read [ServeMux explained](serverMux.md) for a step-by-step comparison.
 
-## ResponseWriter rules
+## Next level: method and path routes
 
-```go
-w.Header().Set("Content-Type", "application/json; charset=utf-8")
-w.WriteHeader(http.StatusCreated)
-_, err := w.Write(body)
-```
-
-- Set headers first.
-- `WriteHeader` commits the status; if omitted, the first `Write` commits `200 OK`.
-- Do not write a body for `204 No Content`.
-- Return after handling an error to avoid writing a second response.
-
-## Request essentials
+Go 1.22+ understands method/path patterns:
 
 ```go
-method := r.Method
-path := r.URL.Path
-query := r.URL.Query().Get("page")
-token := r.Header.Get("Authorization")
-ctx := r.Context()
+mux.HandleFunc("GET /users/{id}", getUser)
+mux.HandleFunc("POST /users", createUser)
 ```
 
-Treat request input as untrusted. Validate path/query values, bound bodies, and propagate `ctx` to work that can block.
-
-## Testing a route
+For `GET /users/42`, read the changing part with:
 
 ```go
-req := httptest.NewRequest(http.MethodGet, "/users/42", nil)
-rec := httptest.NewRecorder()
-mux.ServeHTTP(rec, req)
-
-if rec.Code != http.StatusOK { /* fail test */ }
+id := r.PathValue("id") // "42"
 ```
 
-An explicit mux makes this test independent of global state.
+Start with fixed routes first. Add method patterns and path values when you understand methods and request data.
 
 ## Interview answer
 
-“`http.Handler` is Go’s core server abstraction. `HandlerFunc` adapts ordinary functions, and `ServeMux` routes method/path patterns to handlers. I use an explicit mux, path values, request contexts, and `httptest` for isolated tests.”
+“A router maps an incoming URL to a handler. In Go, `http.NewServeMux` creates an explicit router, `HandleFunc` connects paths to functions, and the mux is passed to the HTTP server.”

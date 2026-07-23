@@ -1,82 +1,74 @@
-# HTTP Basics: Request to Response
+# 01. HTTP Basics: Your First Go Server
 
-## revision
+Start here if HTTP is new.
 
-HTTP is a stateless request-response protocol. A client sends a request; the server selects a handler, performs work, and returns a response.
+## What is HTTP?
+
+HTTP is how a client and a server talk over the web.
 
 ```text
-Client → HTTP request → router → handler → application / database
-Client ← HTTP response ← handler ← result / error
+Browser / app                    Go server
+     |                                |
+     |  request: "please give /"      |
+     |------------------------------->|
+     |                                | runs Go code
+     |  response: "hello world"       |
+     |<-------------------------------|
 ```
 
-In Go, a handler has this shape:
+For example, when you open `https://example.com`, your browser sends an HTTP request. The server sends an HTTP response containing a status, headers, and usually a body.
+
+## The first handler
+
+Open [`http-example.go`](http-example.go). Its important function is:
 
 ```go
-func handler(w http.ResponseWriter, r *http.Request)
+func handler(w http.ResponseWriter, r *http.Request) {
+	fmt.Fprint(w, "hello world")
+}
 ```
 
-| Value | Purpose |
+| Part | Simple meaning |
 | --- | --- |
-| `r *http.Request` | The incoming method, URL, headers, body, cookies, and request context. |
-| `w http.ResponseWriter` | The response status, headers, and body sent back to the client. |
+| Handler | A Go function that runs when a request arrives. |
+| `r` | The request sent by the client. Read its method, URL, headers, and body. |
+| `w` | The response going back to the client. Write text, headers, and a status through it. |
 
-`*http.Request` is a pointer because it is a substantial struct and should not be copied. `http.ResponseWriter` is already an interface, so handlers receive the interface value directly.
+`r` is a pointer because `http.Request` is a large struct. `w` is an interface, so it is passed directly.
 
-## Anatomy of a request
-
-```http
-GET /products?limit=10 HTTP/1.1
-Host: api.example.com
-Accept: application/json
-Authorization: Bearer <token>
-```
-
-- **Method**: intended action, such as `GET` or `POST`.
-- **Path**: resource location, such as `/products`.
-- **Query**: optional modifiers, such as `limit=10`.
-- **Headers**: metadata, such as authentication and content format.
-- **Body**: payload, usually used for create or update requests.
-
-## Anatomy of a response
-
-```http
-HTTP/1.1 200 OK
-Content-Type: application/json; charset=utf-8
-
-{"items":[]}
-```
-
-A response consists of a status code, headers, and an optional body. In Go, set headers before calling `WriteHeader` or writing the body:
+## How the example works
 
 ```go
-w.Header().Set("Content-Type", "application/json; charset=utf-8")
-w.WriteHeader(http.StatusOK)
-_, _ = w.Write([]byte(`{"status":"ok"}`))
+http.HandleFunc("/", handler)     // connect URL / to handler
+http.ListenAndServe(":8080", nil) // start a server on port 8080
 ```
 
-Writing a body first implicitly sends `200 OK`; changing headers or status after that is too late.
+1. `HandleFunc` says: “when somebody requests `/`, call `handler`.”
+2. `ListenAndServe` starts the server.
+3. Visit `http://localhost:8080` in the browser.
+4. Go calls `handler`, which writes `hello world` back.
 
-## Minimal server
+`localhost` means “this computer.” `:8080` means port 8080. A port lets multiple network programs run on one computer.
 
-```go
-mux := http.NewServeMux()
-mux.HandleFunc("GET /healthz", func(w http.ResponseWriter, r *http.Request) {
-	fmt.Fprintln(w, "ok")
-})
+## Run it
 
-server := &http.Server{Addr: ":8080", Handler: mux}
-log.Fatal(server.ListenAndServe())
+```bash
+go run ./http/01-basics/http-example.go
 ```
 
-Use an explicit `ServeMux` instead of the global `http.DefaultServeMux` in application code. It keeps routes isolated and easy to test.
+Then open `http://localhost:8080` or run:
 
-## Rules to remember
+```bash
+curl http://localhost:8080/
+```
 
-- A handler may run concurrently for many requests. Do not use unsynchronized shared mutable state.
-- `r.Context()` is cancelled when the client disconnects or the server shuts down; pass it to database and outbound HTTP calls.
-- Read a request body only as much as needed and set a size limit for untrusted input.
-- Never call `log.Fatal` inside a handler: it terminates the process.
+Stop the server with `Ctrl+C`.
 
-## Interview answer
+## What comes next?
 
-“`net/http` dispatches each request to an `http.Handler`. The handler reads from `*http.Request` and writes status, headers, then a body through `http.ResponseWriter`. Request contexts carry cancellation through downstream work.”
+- The request has a **method** such as `GET` or `POST` → [02 Methods](../02-methods/README.md)
+- It also has headers, a path, query values, and sometimes a body → [03 Requests and Responses](../03-requests-and-responses/README.md)
+
+## First interview answer
+
+“HTTP uses a request-response model. In Go, a handler receives an `http.ResponseWriter` to send the response and an `*http.Request` to read what the client sent.”

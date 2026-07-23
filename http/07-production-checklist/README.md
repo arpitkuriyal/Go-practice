@@ -1,4 +1,8 @@
-# Production HTTP: Final Revision Checklist
+# 07. Production HTTP: Final Revision Checklist
+
+This is the final lesson, not the first one. Read lessons 01–06 first. They explain the basic server, methods, request data, routing, middleware, and JSON one piece at a time.
+
+“Production” means code that is exposed to real users or other services. It needs to handle invalid input, slow clients, cancellation, unexpected errors, and safe shutdown—not only the happy path.
 
 Use this as the last pass before an interview or before exposing a Go HTTP service.
 

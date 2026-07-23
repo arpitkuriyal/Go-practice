@@ -1,60 +1,42 @@
-# Routing Patterns: From Static Paths to APIs
+# Routing Quick Practice
 
-## Static and dynamic routes
+## Fixed routes
 
 ```go
-mux.HandleFunc("GET /about", about)          // static
-mux.HandleFunc("GET /users/{id}", getUser)   // dynamic
+mux.HandleFunc("/", home)
+mux.HandleFunc("/about", about)
 ```
 
-Static routes are fixed. Dynamic route segments capture a value:
+Use fixed routes for pages and endpoints with no changing path part.
+
+## Routes with a value
 
 ```go
+mux.HandleFunc("GET /users/{id}", getUser)
+
 func getUser(w http.ResponseWriter, r *http.Request) {
 	id := r.PathValue("id")
-	if id == "" {
-		http.NotFound(w, r)
-		return
-	}
+	fmt.Fprintln(w, "user ID:", id)
 }
 ```
 
-Use path values to identify a resource and query values for filtering/pagination:
+`/users/42` makes `id` equal to `"42"`. It is still a string, so parse and validate it before using it as a numeric ID.
+
+## Path or query?
 
 ```text
-GET /users/42?include=posts
-     └─ resource  └─ representation option
+/users/42?include=posts
 ```
 
-## Method-aware patterns
+- `42` is a **path value**: it identifies the user.
+- `include=posts` is a **query value**: it changes what details are returned.
 
-Modern `net/http` can keep method selection in the router:
+## A useful API shape
 
-```go
-mux.HandleFunc("GET /users", listUsers)
-mux.HandleFunc("POST /users", createUser)
-mux.HandleFunc("GET /users/{id}", getUser)
+```text
+GET  /users          list users
+POST /users          create a user
+GET  /users/{id}     get one user
 ```
 
-This avoids a large method switch and gives correct method handling. If one handler intentionally owns several methods, switch on `r.Method` and set `Allow` for `405` responses.
-
-## Grouping a prefix
-
-Use a child mux and `http.StripPrefix` for a small standard-library subrouter:
-
-```go
-api := http.NewServeMux()
-api.HandleFunc("GET /users", listUsers)
-
-root := http.NewServeMux()
-root.Handle("/api/", http.StripPrefix("/api", api))
-```
-
-Keep API versions explicit when their contracts differ: `/api/v1/...`.
-
-## Routing pitfalls
-
-- Do not manually parse paths with `strings.TrimPrefix` when `PathValue` can express the route.
-- Validate every path value before using it in a query or lookup.
-- Avoid an all-purpose `"/"` handler that implements the whole API with nested `if` statements.
-- Prefer resource nouns (`/users`) over verbs (`/getUsers`) for conventional CRUD endpoints.
+Keep routes small and let each handler do one job.

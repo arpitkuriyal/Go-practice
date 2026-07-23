@@ -1,99 +1,97 @@
-# JSON APIs: Decode, Validate, Respond Safely
+# 06. JSON APIs: Send and Receive Go Data
 
-## revision
+## Start simple
 
-```text
-limit body → decode one JSON value → reject unknown fields → validate → call service → write JSON
-```
+JSON is a common text format for API data.
 
-Use distinct request and response types when the API contract differs from the internal model. JSON tags define the wire names.
-
-```go
-type createUserRequest struct {
-	Name  string `json:"name"`
-	Email string `json:"email"`
+```json
+{
+  "name": "Arpit",
+  "age": 21
 }
 ```
 
-## Writing JSON
-
-Set headers before writing status/body. A helper keeps all responses consistent:
+In Go, a struct describes this data:
 
 ```go
-func writeJSON(w http.ResponseWriter, status int, value any) {
-	w.Header().Set("Content-Type", "application/json; charset=utf-8")
-	w.WriteHeader(status)
-	if err := json.NewEncoder(w).Encode(value); err != nil {
-		// The response may already be committed: log internally.
-	}
+type user struct {
+	Name string `json:"name"`
+	Age  int    `json:"age"`
 }
 ```
 
-Use `json.NewEncoder(w)` rather than creating an intermediate string. Do not send a body with `204 No Content`.
+The text inside the backticks is a JSON tag. It says the JSON field should be named `name`, not `Name`.
 
-## Reading JSON safely
+## First runnable JSON API
 
-```go
-func decodeCreateUser(w http.ResponseWriter, r *http.Request) (createUserRequest, error) {
-	var input createUserRequest
-	decoder := json.NewDecoder(http.MaxBytesReader(w, r.Body, 1<<20)) // 1 MiB
-	decoder.DisallowUnknownFields()
+Run [`json-example.go`](json-example.go):
 
-	if err := decoder.Decode(&input); err != nil {
-		return input, err
-	}
-	if err := decoder.Decode(&struct{}{}); err != io.EOF {
-		return input, errors.New("body must contain exactly one JSON value")
-	}
-	return input, nil
-}
+```bash
+go run ./http/06-json-encoding/json-example.go
 ```
 
-This pattern limits a malicious body, rejects misspelled fields, and rejects `{} {}` or other trailing JSON. Decode into a pointer so the decoder can populate the value.
+In a second terminal, send JSON with `curl`:
 
-## Validation and error mapping
+```bash
+curl -i -X POST http://localhost:8080/users \
+  -H 'Content-Type: application/json' \
+  -d '{"name":"Arpit","age":21}'
+```
 
-Decoding checks syntax; validation checks meaning. Keep them separate:
+Try invalid input too:
+
+```bash
+curl -i -X POST http://localhost:8080/users \
+  -H 'Content-Type: application/json' \
+  -d '{"name":"","age":0}'
+```
+
+## Decode: JSON to Go
 
 ```go
-if strings.TrimSpace(input.Name) == "" {
-	writeJSON(w, http.StatusUnprocessableEntity, map[string]string{
-		"error": "name is required",
-	})
+var input user
+err := json.NewDecoder(r.Body).Decode(&input)
+```
+
+`r.Body` is the data sent by the client. `&input` is a pointer, allowing the decoder to fill in the struct fields. If decoding fails, return `400 Bad Request`.
+
+## Validate after decoding
+
+Valid JSON is not automatically valid application data. This JSON is correctly formatted but should be rejected:
+
+```json
+{"name":"","age":0}
+```
+
+```go
+if input.Name == "" || input.Age <= 0 {
+	http.Error(w, "name and positive age are required", http.StatusBadRequest)
 	return
 }
 ```
 
-| Problem | Typical response |
-| --- | --- |
-| Malformed JSON / bad query syntax | `400 Bad Request` |
-| Valid JSON but invalid fields | `422 Unprocessable Content` |
-| Duplicate or incompatible current state | `409 Conflict` |
-| Missing/invalid credentials | `401 Unauthorized` |
-| Unexpected internal failure | `500 Internal Server Error` |
-
-Return a stable public error shape such as `{"error":"name is required"}`. Log internal errors with enough context, but do not expose implementation details.
-
-## Presence versus zero values
-
-For a create request, a zero value is often enough. For `PATCH`, distinguish omitted fields from explicit zero values with pointers:
+## Encode: Go to JSON
 
 ```go
-type updateUserRequest struct {
-	Name *string `json:"name"`
-	Age  *int    `json:"age"`
-}
+w.Header().Set("Content-Type", "application/json; charset=utf-8")
+w.WriteHeader(http.StatusCreated)
+json.NewEncoder(w).Encode(input)
 ```
 
-`nil` means absent; `Age != nil && *Age == 0` means the client explicitly supplied zero.
+Set the content type before writing the response. `201 Created` tells the client that a new resource was created.
 
-## Interview traps
+## Next level: safer public APIs
 
-- `json.Decoder.Decode` accepts one JSON value but does not alone reject trailing values.
-- `DisallowUnknownFields` is useful for strict public APIs, but consider backward compatibility before enabling it.
-- `omitempty` changes the response contract; do not use it only to hide a bug.
-- Content type is metadata, not validation. Still decode and validate the actual body.
+Once the basic flow is clear, add these protections:
 
-## One-line interview answer
+- Limit body size with `http.MaxBytesReader`.
+- Use `decoder.DisallowUnknownFields()` to reject misspelled fields when a strict contract is appropriate.
+- Reject trailing JSON values, such as `{...} {...}`.
+- Return a consistent JSON error shape such as `{"error":"invalid input"}`.
+- Use `422 Unprocessable Content` when JSON syntax is valid but business validation fails.
 
-“For a Go JSON endpoint, I limit the body, decode exactly one strict value, validate business rules, map failures to stable statuses and JSON errors, and set headers before writing the response.”
+The production lesson contains the full safe version.
+
+## Interview answer
+
+“I decode the request body into a struct, validate the fields, set the JSON content type, write the correct status, and encode a response. For public APIs I also bound the body and reject unknown or trailing JSON.”
